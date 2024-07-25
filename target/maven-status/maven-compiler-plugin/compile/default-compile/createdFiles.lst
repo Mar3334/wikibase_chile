@@ -1,0 +1,5 @@
+wikibase/WikibaseManager.class
+wikibase/manager_test.class
+wikibase/wikibase_inicializador.class
+wikibase/VariablePosition.class
+wikibase/WikibaseItemCreation.class
