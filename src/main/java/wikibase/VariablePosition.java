@@ -1,6 +1,6 @@
 package wikibase;
 
-class VariablePosition {
+public class VariablePosition {
     private final String variable;
     private final int position;
 

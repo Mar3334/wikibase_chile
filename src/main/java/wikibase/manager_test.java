@@ -30,7 +30,9 @@ public static void main(String[] args) throws IOException {
         manager.fetchCsrfToken();
         
         
-        System.out.println(manager.entityExistsByLabel("MAG", "item", "es"));
-        
+       
+        // itemId propertyId value QualifierId qualifierValue
+        String tipoEstablecimientoId = manager.createProperty("tipo de establecimiento", "Tipos de Establecimientos Educacionales existen según el tipo de financiamiento", "string");
+        String ruralidadId = manager.createProperty("ruralidad", "Ruralidad de un establecimiento", "string");
 	}
 }
