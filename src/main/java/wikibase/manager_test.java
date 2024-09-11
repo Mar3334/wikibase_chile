@@ -1,6 +1,12 @@
 package wikibase;
 
+import java.io.FileReader;
 import java.io.IOException;
+import java.util.List;
+
+import com.opencsv.CSVReader;
+import com.opencsv.exceptions.CsvException;
+
 
 public class manager_test {
 public static void main(String[] args) throws IOException {
@@ -30,9 +36,11 @@ public static void main(String[] args) throws IOException {
         manager.fetchCsrfToken();
         
         
+        System.out.println(manager.getEntityByLabel("orientacion religiosa", "property", "es"));
        
+        //String statId = manager.getStatementId("Q5323", "P1", "Q5168", "wikibase-item");
+        
         // itemId propertyId value QualifierId qualifierValue
-        String tipoEstablecimientoId = manager.createProperty("tipo de establecimiento", "Tipos de Establecimientos Educacionales existen según el tipo de financiamiento", "string");
-        String ruralidadId = manager.createProperty("ruralidad", "Ruralidad de un establecimiento", "string");
+        //manager.removeRegionClaims("Q5323", statId);
 	}
 }

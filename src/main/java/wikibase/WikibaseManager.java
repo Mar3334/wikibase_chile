@@ -371,10 +371,36 @@ public class WikibaseManager {
         }
     }
     
+    public void removeRegionClaims(String itemId, String claimId) throws IOException {
+        // Crear los parámetros codificados como application/x-www-form-urlencoded
+        String encodedToken = URLEncoder.encode(csrfToken, StandardCharsets.UTF_8.toString());
+        String encodedItemId = URLEncoder.encode(itemId, StandardCharsets.UTF_8.toString());
+
+        // Crear el objeto JSON para eliminar el claim
+        String data = String.format("{\"claims\":[{\"id\":\"%s\",\"remove\":\"true\"}]}", claimId);
+
+        String postData = String.format("id=%s&data=%s&token=%s", 
+            encodedItemId, URLEncoder.encode(data, StandardCharsets.UTF_8.toString()), encodedToken);
+
+        // Crear la entidad StringEntity con los datos codificados
+        StringEntity entity = new StringEntity(postData, StandardCharsets.UTF_8);
+
+        // Configurar y ejecutar la solicitud POST para eliminar el claim
+        HttpPost post = new HttpPost(API_ENDPOINT + "?action=wbeditentity&format=json");
+        post.setEntity(entity);
+        post.setHeader("Content-Type", "application/x-www-form-urlencoded");
+
+        // Ejecutar la solicitud y procesar la respuesta
+        try (CloseableHttpResponse response = httpClient.execute(post)) {
+            String responseBody = EntityUtils.toString(response.getEntity());
+            System.out.println("Response: " + responseBody);
+        }
+    }
+    
     public String getStatementId(String itemId, String propertyId, String value, String valueType) throws IOException {
         String url = API_ENDPOINT + "?action=wbgetclaims&entity=" + URLEncoder.encode(itemId, StandardCharsets.UTF_8.toString()) + "&format=json";
         HttpGet get = new HttpGet(url);
-
+        
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
@@ -561,13 +587,14 @@ public class WikibaseManager {
         diccionarioPropiedades.put("DOC_FEC_NAC", "fecha de nacimiento");
         diccionarioPropiedades.put("DOC_GENERO", "género del Docente");
         diccionarioPropiedades.put("NOM_SUBSECTOR", "asignatura");
-        diccionarioPropiedades.put("ESTADO_ESTAB", "estado del establecimiento");
+        diccionarioPropiedades.put("ESTADO_ESTAB", "P37");
         diccionarioPropiedades.put("COD_ENSE", "nivel de enseñanza");
         diccionarioPropiedades.put("PROM_ASIS", "promedio de asistencia");
         diccionarioPropiedades.put("CUR_SIM_TOT", "total de cursos simples");
         diccionarioPropiedades.put("CUR_COMB_TOT", "total de cursos combinados");
-        diccionarioPropiedades.put("COD_DEPE", "tipo de establecimiento");
-        diccionarioPropiedades.put("RURAL_RBD", "ruralidad");
+        diccionarioPropiedades.put("COD_DEPE", "P36");
+        diccionarioPropiedades.put("RURAL_RBD", "P38");
+        diccionarioPropiedades.put("ORI_RELIGIOSA", "P40");
         
         diccionarioPropiedades.put("MAT_HOM_TOT", "personas matrículadas");
         diccionarioPropiedades.put("MAT_MUJ_TOT", "personas matrículadas");
@@ -615,9 +642,10 @@ public class WikibaseManager {
         diccionarioPropiedadesSinCualificador.put("ubicacion", "globe-coordinate");
         diccionarioPropiedadesSinCualificador.put("fecha de nacimiento", "time");
         diccionarioPropiedadesSinCualificador.put("género del Docente", "string");
-        diccionarioPropiedadesSinCualificador.put("estado del establecimiento", "string");
-        diccionarioPropiedadesSinCualificador.put("ruralidad", "string");
-        diccionarioPropiedadesSinCualificador.put("tipo de establecimiento", "string");
+        diccionarioPropiedadesSinCualificador.put("P37", "wikibase-item");
+        diccionarioPropiedadesSinCualificador.put("P38", "wikibase-item");
+        diccionarioPropiedadesSinCualificador.put("P36", "wikibase-item");
+        diccionarioPropiedadesSinCualificador.put("P40", "wikibase-item");
         
         
         Map<String, String> educationalLevels = new LinkedHashMap<>();
@@ -678,7 +706,7 @@ public class WikibaseManager {
                 "APR_SI_TO", "APR_NB", "REP_HOM_TO", "REP_MUJ_TO",
                 "REP_SI_TO", "RET_HOM_TO", "RET_MUJ_TO", "RET_SI_TO",
                 "TRA_HOM_TO", "TRA_SI_TO", "TRA_MUJ_TO", "SI_HOM_TO",
-                "SI_MUJ_TO", "SI_SI_TO", "COD_DEPE", "RURAL_RBD"
+                "SI_MUJ_TO", "SI_SI_TO", "COD_DEPE", "RURAL_RBD", "ORI_RELIGIOSA"
         ));
     	
     	
@@ -1364,33 +1392,33 @@ public class WikibaseManager {
                 					switch (nextInLineValues[propiedadPosicion]) {
                 					
 	                					case "1":
-	                						if (!manager.statementExists(establecimientoId, propiedadId, "CORPORACIÓN MUNICIPAL")) {
-	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "CORPORACIÓN MUNICIPAL", propiedadType);
+	                						if (!manager.statementExists(establecimientoId, propiedadId, "Q18723")) {
+	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18723", propiedadType);
 	                						}
 	                						break;
 	                					case "2":
-											if (!manager.statementExists(establecimientoId, propiedadId, "MUNICIPAL DAEM")) {
-	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "MUNICIPAL DAEM", propiedadType);
+											if (!manager.statementExists(establecimientoId, propiedadId, "Q18724")) {
+	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18724", propiedadType);
 	                						}
 											break;
 	                					case "3":
-	                						if (!manager.statementExists(establecimientoId, propiedadId, "PARTICULAR SUBVENCIONADO")) {
-	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "PARTICULAR SUBVENCIONADO", propiedadType);
+	                						if (!manager.statementExists(establecimientoId, propiedadId, "Q18725")) {
+	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18725", propiedadType);
 	                						}
 	                						break;
 	                					case "4":
-											if (!manager.statementExists(establecimientoId, propiedadId, "PARTICULAR PAGADO")) {
-	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "PARTICULAR PAGADO", propiedadType);
+											if (!manager.statementExists(establecimientoId, propiedadId, "Q18726")) {
+	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18726", propiedadType);
 	                						}
 											break;
 	                					case "5":
-	                						if (!manager.statementExists(establecimientoId, propiedadId, "CORP. DE ADMINISTRACIÓN DELEGADA (DL 3166)")) {
-	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "CORP. DE ADMINISTRACIÓN DELEGADA (DL 3166)", propiedadType);
+	                						if (!manager.statementExists(establecimientoId, propiedadId, "Q18727")) {
+	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18727", propiedadType);
 	                						}
 	                						break;
 	                					case "6":
-											if (!manager.statementExists(establecimientoId, propiedadId, "SERVICIO LOCAL DE EDUCACIÓN")) {
-	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "SERVICIO LOCAL DE EDUCACIÓN", propiedadType);
+											if (!manager.statementExists(establecimientoId, propiedadId, "Q18728")) {
+	                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18728", propiedadType);
 	                						}
 											break;
                 					
@@ -1400,17 +1428,71 @@ public class WikibaseManager {
                 					switch (nextInLineValues[propiedadPosicion]) {
                 					
                 					case "0":
-                						if (!manager.statementExists(establecimientoId, propiedadId, "URBANO")) {
-                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "URBANO", propiedadType);
+                						if (!manager.statementExists(establecimientoId, propiedadId, "Q18714")) {
+                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18714", propiedadType);
                 						}
                 						break;
                 					case "1":
-										if (!manager.statementExists(establecimientoId, propiedadId, "RURAL")) {
-                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "RURAL", propiedadType);
+										if (!manager.statementExists(establecimientoId, propiedadId, "Q18715")) {
+                							statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18715", propiedadType);
                 						}
 										break;
+									
+                					}
             					
-            					}
+            					} else if (propiedadCodigo.equals("ORI_RELIGIOSA")) {
+                					switch (nextInLineValues[propiedadPosicion]) {
+                					
+	                					case "1":
+	                				        if (!manager.statementExists(establecimientoId, propiedadId, "Q18716")) {
+	                				            statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18716", propiedadType);
+	                				        }
+	                				        break;
+	
+	                				    case "2":
+	                				        if (!manager.statementExists(establecimientoId, propiedadId, "Q18717")) {
+	                				        	
+	                				            statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18717", propiedadType);
+	                				        }
+	                				        break;
+	
+	                				    case "3":
+	                				        if (!manager.statementExists(establecimientoId, propiedadId, "Q18718")) {
+	                				            statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18718", propiedadType);
+	                				        }
+	                				        break;
+	
+	                				    case "4":
+	                				        if (!manager.statementExists(establecimientoId, propiedadId, "Q18719")) {
+	                				            statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18719", propiedadType);
+	                				        }
+	                				        break;
+	
+	                				    case "5":
+	                				        if (!manager.statementExists(establecimientoId, propiedadId, "Q18720")) {
+	                				            statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18720", propiedadType);
+	                				        }
+	                				        break;
+	
+	                				    case "6":
+	                				        if (!manager.statementExists(establecimientoId, propiedadId, "Q18721")) {
+	                				            statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18721", propiedadType);
+	                				        }
+	                				        break;
+	
+	                				    case "7":
+	                				        if (!manager.statementExists(establecimientoId, propiedadId, "Q18722")) {
+	                				            statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q18722", propiedadType);
+	                				        }
+	                				        break;
+	
+	                				    case "9":
+	                				        if (!manager.statementExists(establecimientoId, propiedadId, "Q2406")) {
+	                				            statementId = manager.addStatementToItem(establecimientoId, propiedadId, "Q2406", propiedadType);
+	                				        }
+	                				        break;
+	            					
+	                				} 
                 					
                 				} else if (!propiedadCodigo.equals("LATITUD") && !propiedadCodigo.equals("LONGITUD") && !propiedadCodigo.equals("ESTADO_ESTAB")) {
                 					
@@ -1447,16 +1529,16 @@ public class WikibaseManager {
                 						switch (nextInLineValues[propiedadPosicion]) {
                     					
 		                					case "1":
-		                						value = "FUNCIONANDO";
+		                						value = "Q18729";
 		                						break;
 		                					case "2":
-		                						value = "EN RECESO";
+		                						value = "Q18730";
 												break;
 		                					case "3":
-		                						value = "CERRADO";
+		                						value = "Q18731";
 												break;
 		                					case "4":
-		                						value = "AUTORIZADO SIN MATRICULA";
+		                						value = "Q18732";
 												break;
 	                					
 	                					}
@@ -1573,110 +1655,116 @@ public class WikibaseManager {
 					
 						}
 						
-						docenteLabel = "MRUN: " + docenteLabel;
-						
-						if (docentes.containsKey(docenteLabel)) {
+						if (!docenteLabel.trim().equals("")) {
 							
-							docenteId = docentes.get(docenteLabel);
+							docenteLabel = "MRUN: " + docenteLabel;
 							
-						} else {
-							
-							if (manager.entityExistsByLabel(docenteLabel, "item", "es")) {
-								docenteId = manager.getEntityByLabel(docenteLabel, "item", "es");
-								docentes.put(docenteLabel, docenteId);
+							if (docentes.containsKey(docenteLabel)) {
+								
+								docenteId = docentes.get(docenteLabel);
 								
 							} else {
-								if (!docenteLabel.replace(" ", "").equals("")) {
-									
-									docenteId = manager.createItem(docenteLabel, "");
+								
+								if (manager.entityExistsByLabel(docenteLabel, "item", "es")) {
+									docenteId = manager.getEntityByLabel(docenteLabel, "item", "es");
 									docentes.put(docenteLabel, docenteId);
-									manager.addStatementToItem(docenteId, "P15", "Q4", "wikibase-item");
 									
-								} 
+								} else {
+									if (!docenteLabel.replace(" ", "").equals("")) {
+										
+										docenteId = manager.createItem(docenteLabel, "");
+										docentes.put(docenteLabel, docenteId);
+										manager.addStatementToItem(docenteId, "P15", "Q4", "wikibase-item");
+										
+									} 
+								}
+								
+								
+								
 							}
 							
-							
+							for (VariablePosition vp : matchingPropDocente) {
+	                    		
+	                    		String propiedadCodigo = vp.getVariable();
+	                    		int propiedadPosicion = vp.getPosition();
+	                    		String propiedad = diccionarioPropiedades.get(propiedadCodigo);
+	                    		
+	                    		String propiedadId = "";
+	                    		
+	                    		if (diccionarioPropiedadesId.containsKey(propiedad)) {
+	                    			
+	                    			propiedadId = diccionarioPropiedadesId.get(propiedad);
+	
+	                    			
+	                    		} else {
+	                    			
+	                    			propiedadId = manager.getEntityByLabel(propiedad, "property", "es");
+	                    			
+	                    			diccionarioPropiedadesId.put(docenteId, propiedadId);
+	                    			
+	                    		};
+	                    		
+	                    		if (diccionarioPropiedadesConCualificador.containsKey(propiedad)) {
+	                				
+	                				String propiedadType = diccionarioPropiedadesConCualificador.get(propiedad);
+	                					
+	                				String statementId = "";
+	                				
+	                				
+	                				if (manager.statementExists(docenteId, propiedadId, nextInLineValues[propiedadPosicion])) {
+	                					statementId = manager.getStatementId(docenteId, propiedadId, nextInLineValues[propiedadPosicion], propiedadType);
+	                				} else {
+	                					statementId = manager.addStatementToItem(docenteId, propiedadId, nextInLineValues[propiedadPosicion], propiedadType);
+	                				}
+	             
+	                				if (!manager.doesStatementWithQualifierExist(docenteId, propiedadId, nextInLineValues[propiedadPosicion], yearPropertyId, nextInLineValues[Integer.parseInt(cualificador)])) {
+	                					                    					
+	                					manager.addQualifierToStatement(statementId, yearPropertyId, nextInLineValues[Integer.parseInt(cualificador)], "time");
+	                					
+	                				}
+	
+	                				
+	                			} else if (diccionarioPropiedadesSinCualificador.containsKey(propiedad)) {
+	                				
+	                				
+	                				String propiedadType = diccionarioPropiedadesSinCualificador.get(propiedad);
+	                				
+	                				String statementId = "";
+	                				
+	                				if (propiedadCodigo.equals("DOC_GENERO")) {                					
+	                					switch (nextInLineValues[propiedadPosicion]) {
+	                					
+		                					case "1":
+		                						if (!manager.statementExists(docenteId, propiedadId, "HOMBRE")) {
+		                							statementId = manager.addStatementToItem(docenteId, propiedadId, "HOMBRE", propiedadType);
+		                						}
+		                						break;
+		                					case "2":
+												if (!manager.statementExists(docenteId, propiedadId, "MUJER")) {
+		                							statementId = manager.addStatementToItem(docenteId, propiedadId, "MUJER", propiedadType);
+		                						}
+												break;
+	                					
+	                					}
+	                					
+	                				} else {
+	                					
+	                					if (!manager.statementExists(docenteId, propiedadId, nextInLineValues[propiedadPosicion])) {
+				         					
+	                    					statementId = manager.addStatementToItem(docenteId, propiedadId, nextInLineValues[propiedadPosicion], propiedadType);
+	                    					
+	                    				}
+	                					
+	                				}
+	
+	
+	                			}
+	                    		
+	                    	}
 							
 						}
 						
-						for (VariablePosition vp : matchingPropDocente) {
-                    		
-                    		String propiedadCodigo = vp.getVariable();
-                    		int propiedadPosicion = vp.getPosition();
-                    		String propiedad = diccionarioPropiedades.get(propiedadCodigo);
-                    		
-                    		String propiedadId = "";
-                    		
-                    		if (diccionarioPropiedadesId.containsKey(propiedad)) {
-                    			
-                    			propiedadId = diccionarioPropiedadesId.get(propiedad);
-
-                    			
-                    		} else {
-                    			
-                    			propiedadId = manager.getEntityByLabel(propiedad, "property", "es");
-                    			
-                    			diccionarioPropiedadesId.put(docenteId, propiedadId);
-                    			
-                    		};
-                    		
-                    		if (diccionarioPropiedadesConCualificador.containsKey(propiedad)) {
-                				
-                				String propiedadType = diccionarioPropiedadesConCualificador.get(propiedad);
-                					
-                				String statementId = "";
-                				
-                				
-                				if (manager.statementExists(docenteId, propiedadId, nextInLineValues[propiedadPosicion])) {
-                					statementId = manager.getStatementId(docenteId, propiedadId, nextInLineValues[propiedadPosicion], propiedadType);
-                				} else {
-                					statementId = manager.addStatementToItem(docenteId, propiedadId, nextInLineValues[propiedadPosicion], propiedadType);
-                				}
-             
-                				if (!manager.doesStatementWithQualifierExist(docenteId, propiedadId, nextInLineValues[propiedadPosicion], yearPropertyId, nextInLineValues[Integer.parseInt(cualificador)])) {
-                					                    					
-                					manager.addQualifierToStatement(statementId, yearPropertyId, nextInLineValues[Integer.parseInt(cualificador)], "time");
-                					
-                				}
-
-                				
-                			} else if (diccionarioPropiedadesSinCualificador.containsKey(propiedad)) {
-                				
-                				
-                				String propiedadType = diccionarioPropiedadesSinCualificador.get(propiedad);
-                				
-                				String statementId = "";
-                				
-                				if (propiedadCodigo.equals("DOC_GENERO")) {                					
-                					switch (nextInLineValues[propiedadPosicion]) {
-                					
-	                					case "1":
-	                						if (!manager.statementExists(docenteId, propiedadId, "HOMBRE")) {
-	                							statementId = manager.addStatementToItem(docenteId, propiedadId, "HOMBRE", propiedadType);
-	                						}
-	                						break;
-	                					case "2":
-											if (!manager.statementExists(docenteId, propiedadId, "MUJER")) {
-	                							statementId = manager.addStatementToItem(docenteId, propiedadId, "MUJER", propiedadType);
-	                						}
-											break;
-                					
-                					}
-                					
-                				} else {
-                					
-                					if (!manager.statementExists(docenteId, propiedadId, nextInLineValues[propiedadPosicion])) {
-			         					
-                    					statementId = manager.addStatementToItem(docenteId, propiedadId, nextInLineValues[propiedadPosicion], propiedadType);
-                    					
-                    				}
-                					
-                				}
-
-
-                			}
-                    		
-                    	}
+						
 						
 					}
 					

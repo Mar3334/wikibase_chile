@@ -39,9 +39,32 @@ public class wikibase_inicializador {
         String directorPropertyId = manager.createProperty("empleados", "Empleados de una organizacion", "quantity");
         String ubicacionPropertyId = manager.createProperty("ubicacion", "Coordenadas de un lugar o establecimiento", "globe-coordinate");
         String matriculaPropertyId = manager.createProperty("matrículados total", "Número de estudiantes matriculados en un establecimiento", "quantity");
-        String tipoEstablecimientoId = manager.createProperty("tipo de establecimiento", "Tipos de Establecimientos Educacionales existen según el tipo de financiamiento", "string");
-        String ruralidadId = manager.createProperty("ruralidad", "Ruralidad de un establecimiento", "string");
+        String tipoEstablecimientoId = manager.createProperty("tipo de establecimiento", "Tipos de Establecimientos Educacionales existen según el tipo de financiamiento", "wikibase-item");
+        String ruralidadId = manager.createProperty("ruralidad", "Ruralidad de un establecimiento", "wikibase-item");
+        String oriId = manager.createProperty("orientacion religiosa", "orientacion religiosa de la entidad", "wikibase-item");        
+        String ruralID = manager.createItem("RURAL", "Establecimiento ubicado en una zona rural, típicamente áreas fuera de los centros urbanos principales.");
+        String urbanoID = manager.createItem("URBANO", "Establecimiento ubicado en una zona urbana, típicamente dentro de ciudades o grandes áreas metropolitanas.");
+
+        manager.createItem("ORIENTACIÓN RELIGIOSA LAICA", "Establecimiento sin afiliación religiosa, centrado en una educación secular.");
+        manager.createItem("ORIENTACIÓN RELIGIOSA CATÓLICA", "Establecimiento afiliado a la religión católica, promoviendo enseñanzas basadas en la fe católica.");
+        manager.createItem("ORIENTACIÓN RELIGIOSA EVANGÉLICA", "Establecimiento afiliado a la fe evangélica, centrado en los principios de la religión evangélica.");
+        manager.createItem("ORIENTACIÓN MUSULMANA", "Establecimiento afiliado a la religión musulmana, basado en los principios del Islam.");
+        manager.createItem("ORIENTACIÓN JUDÍA", "Establecimiento afiliado a la religión judía, centrado en la enseñanza y valores de la fe judía.");
+        manager.createItem("ORIENTACIÓN BUDISTA", "Establecimiento afiliado a la tradición budista, promoviendo los principios y enseñanzas del budismo.");
+        manager.createItem("ORIENTACIÓN RELIGIOSA OTRO", "Establecimiento con una orientación religiosa diferente a las principales mencionadas, o una combinación de varias.");
         
+        
+        manager.createItem("FUNCIONANDO", "Establecimiento que se encuentra en funcionamiento activo.");
+        manager.createItem("EN RECESO", "Establecimiento que está temporalmente inactivo.");
+        manager.createItem("CERRADO", "Establecimiento que ha sido cerrado permanentemente.");
+        manager.createItem("AUTORIZADO SIN MATRICULA", "Establecimiento autorizado pero que no tiene matrícula activa de estudiantes.");
+        
+        manager.createItem("CORPORACIÓN MUNICIPAL", "Entidad educativa gestionada por una corporación municipal.");
+        manager.createItem("MUNICIPAL DAEM", "Departamento de Administración de Educación Municipal (DAEM) responsable de la administración educativa.");
+        manager.createItem("PARTICULAR SUBVENCIONADO", "Establecimiento privado que recibe subvención estatal para el financiamiento de la educación.");
+        manager.createItem("PARTICULAR PAGADO", "Establecimiento privado que se financia completamente mediante pagos directos de las familias.");
+        manager.createItem("CORP. DE ADMINISTRACIÓN DELEGADA (DL 3166)", "Establecimiento gestionado bajo la normativa del Decreto Ley 3166 de administración delegada.");
+        manager.createItem("SERVICIO LOCAL DE EDUCACIÓN", "Establecimiento gestionado por un Servicio Local de Educación Pública.");
         // Crear propiedades para Regiones
         String establecimientosRegionPropertyId = manager.createProperty("establecimientos en la zona", "Establecimientos educativos ubicados en la región", "wikibase-item");
         String docentesRegionPropertyId = manager.createProperty("docentes en la Región", "Nombre de los docentes que trabajan en la región", "wikibase-item");
@@ -144,7 +167,7 @@ public class wikibase_inicializador {
         regions.put("REGIÓN DEL LIBERTADOR GRAL. BERNARDO O’HIGGINS", "LGBO");
         regions.put("REGIÓN DEL MAULE", "MAULE");
         regions.put("REGIÓN DEL BIOBÍO", "BBIO");
-        regions.put("REGIÓN DE LA ARAUCANÍA", "ARACU");
+        regions.put("REGIÓN DE LA ARAUCANÍA", "ARAUC");
         regions.put("REGIÓN DE LOS LAGOS", "LAGOS");
         regions.put("REGIÓN DE AYSÉN DEL GRAL. CARLOS IBÁÑEZ DEL CAMPO", "AYSEN");
         regions.put("REGIÓN DE MAGALLANES Y DE LA ANTÁRTICA CHILENA", "MAG");
