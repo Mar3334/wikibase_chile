@@ -1249,14 +1249,14 @@ public class WikibaseManager {
                         					
                         				}
                 						
-                						if (posicionCodEnse != -1) {
+                						if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P28", "Q2403")) {
                 							
-                							if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P28", "Q2403")) {
-	                							
-                            					manager.addQualifierToStatement(statementId, "P28", "Q2403", "wikibase-item");
-                            					
-                            				}
-                    						
+                        					manager.addQualifierToStatement(statementId, "P28", "Q2403", "wikibase-item");
+                        					
+                        				}
+                						
+                						if (posicionCodEnse != -1) {
+
                     						if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P29", educationalLevels.get(nextInLineValues[posicionCodEnse]))) {
                     							
                             					manager.addQualifierToStatement(statementId, "P29", educationalLevels.get(nextInLineValues[posicionCodEnse]), "wikibase-item");
@@ -1274,13 +1274,15 @@ public class WikibaseManager {
                         					
                         				}
                 						
+                						if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P28", "Q2404")) {
+                							
+                        					manager.addQualifierToStatement(statementId, "P28", "Q2404", "wikibase-item");
+                        					
+                        				}
+                						
                 						if (posicionCodEnse != -1) {
                 							
-                							if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P28", "Q2404")) {
-	                							
-                            					manager.addQualifierToStatement(statementId, "P28", "Q2404", "wikibase-item");
-                            					
-                            				}
+            
                     						
                     						if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P29", educationalLevels.get(nextInLineValues[posicionCodEnse]))) {
                     							
@@ -1298,13 +1300,15 @@ public class WikibaseManager {
                         					
                         				}
                 						
+                						if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P28", "Q2406")) {
+                							
+                        					manager.addQualifierToStatement(statementId, "P28", "Q2406", "wikibase-item");
+                        					
+                        				}
+                						
                 						if (posicionCodEnse != -1) {
                 							
-                							if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P28", "Q2406")) {
-	                							
-                            					manager.addQualifierToStatement(statementId, "P28", "Q2406", "wikibase-item");
-                            					
-                            				}
+                							
                     						
                     						if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P29", educationalLevels.get(nextInLineValues[posicionCodEnse]))) {
                     							
@@ -1322,13 +1326,14 @@ public class WikibaseManager {
                         					
                         				}
                 						
+                						if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P28", "Q2405")) {
+                							
+                        					manager.addQualifierToStatement(statementId, "P28", "Q2405", "wikibase-item");
+                        					
+                        				}
+                						
                 						if (posicionCodEnse != -1) {
                 							
-                							if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P28", "Q2405")) {
-	                							
-                            					manager.addQualifierToStatement(statementId, "P28", "Q2405", "wikibase-item");
-                            					
-                            				}
                     						
                     						if (!manager.doesStatementWithQualifierExist(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], "P29", educationalLevels.get(nextInLineValues[posicionCodEnse]))) {
                     							
