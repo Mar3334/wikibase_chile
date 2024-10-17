@@ -1,126 +1,138 @@
+// Paquete que contiene la clase para inicializar datos en Wikibase.
 package wikibase;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+// Clase principal para inicializar y gestionar datos en Wikibase.
 public class wikibase_inicializador {
 	
+    // Método principal que se ejecuta al iniciar el programa.
 	public static void main(String[] args) throws IOException {
 		
+        // Declaración de la instancia del gestor de Wikibase.
 		WikibaseManager manager;
     	
+    	// Variables para el nombre de usuario, contraseña y ruta del archivo.
     	String username;
         String password;
         String filePath;
     	
+        // Verifica si se pasaron menos de 3 argumentos al programa.
     	if (args.length < 3) {
-            // System.err.println("Uso: WikibaseManager <usuario> <clave> <archivo>");
-            // System.exit(1);
-
+            // Si no hay suficientes argumentos, se asignan valores vacíos a las variables.
     		username = "";
             password = "";
             filePath = "";
     		
-        } else {     	
+        } else {   
+            // Si se proporcionaron suficientes argumentos, se asignan a las variables correspondientes.
         	username = args[0];
             password = args[1];
             filePath = args[2];	     	
         }
 
+        // Inicializar el gestor de Wikibase con el nombre de usuario y contraseña.
         manager = new WikibaseManager(username, password);
+        
+        // Iniciar sesión en Wikibase.
         manager.login();
+        
+        // Obtener el token CSRF necesario para hacer cambios autenticados.
         manager.fetchCsrfToken();
         
-
-		// Crear propiedades para establecimientos
+        // Crear varias propiedades en Wikibase para los establecimientos educativos.
         String regionPropertyId = manager.createProperty("región", "Nombre de la región donde se ubica la entidad", "wikibase-item");
         String comunaPropertyId = manager.createProperty("comuna", "Nombre de la comuna donde se ubica la entidad", "wikibase-item");
-        String directorPropertyId = manager.createProperty("empleados", "Empleados de una organizacion", "quantity");
+        String directorPropertyId = manager.createProperty("empleados", "Empleados de una organización", "quantity");
         String ubicacionPropertyId = manager.createProperty("ubicacion", "Coordenadas de un lugar o establecimiento", "globe-coordinate");
         String matriculaPropertyId = manager.createProperty("matrículados total", "Número de estudiantes matriculados en un establecimiento", "quantity");
-        String tipoEstablecimientoId = manager.createProperty("tipo de establecimiento", "Tipos de Establecimientos Educacionales existen según el tipo de financiamiento", "wikibase-item");
+        String tipoEstablecimientoId = manager.createProperty("tipo de establecimiento", "Tipos de Establecimientos Educacionales según el tipo de financiamiento", "wikibase-item");
         String ruralidadId = manager.createProperty("ruralidad", "Ruralidad de un establecimiento", "wikibase-item");
-        String oriId = manager.createProperty("orientacion religiosa", "orientacion religiosa de la entidad", "wikibase-item");        
-        String ruralID = manager.createItem("RURAL", "Establecimiento ubicado en una zona rural, típicamente áreas fuera de los centros urbanos principales.");
-        String urbanoID = manager.createItem("URBANO", "Establecimiento ubicado en una zona urbana, típicamente dentro de ciudades o grandes áreas metropolitanas.");
+        String oriId = manager.createProperty("orientacion religiosa", "Orientación religiosa de la entidad", "wikibase-item");
+        
+        // Crear ítems en Wikibase relacionados con ruralidad y otros aspectos de la ubicación.
+        String ruralID = manager.createItem("RURAL", "Establecimiento ubicado en una zona rural.");
+        String urbanoID = manager.createItem("URBANO", "Establecimiento ubicado en una zona urbana.");
+        
+        // Crear ítems relacionados con la orientación religiosa de los establecimientos.
+        manager.createItem("ORIENTACIÓN RELIGIOSA LAICA", "Establecimiento sin afiliación religiosa.");
+        manager.createItem("ORIENTACIÓN RELIGIOSA CATÓLICA", "Establecimiento afiliado a la religión católica.");
+        manager.createItem("ORIENTACIÓN RELIGIOSA EVANGÉLICA", "Establecimiento afiliado a la fe evangélica.");
+        manager.createItem("ORIENTACIÓN MUSULMANA", "Establecimiento afiliado a la religión musulmana.");
+        manager.createItem("ORIENTACIÓN JUDÍA", "Establecimiento afiliado a la religión judía.");
+        manager.createItem("ORIENTACIÓN BUDISTA", "Establecimiento afiliado a la tradición budista.");
+        manager.createItem("ORIENTACIÓN RELIGIOSA OTRO", "Establecimiento con orientación religiosa diferente o combinada.");
 
-        manager.createItem("ORIENTACIÓN RELIGIOSA LAICA", "Establecimiento sin afiliación religiosa, centrado en una educación secular.");
-        manager.createItem("ORIENTACIÓN RELIGIOSA CATÓLICA", "Establecimiento afiliado a la religión católica, promoviendo enseñanzas basadas en la fe católica.");
-        manager.createItem("ORIENTACIÓN RELIGIOSA EVANGÉLICA", "Establecimiento afiliado a la fe evangélica, centrado en los principios de la religión evangélica.");
-        manager.createItem("ORIENTACIÓN MUSULMANA", "Establecimiento afiliado a la religión musulmana, basado en los principios del Islam.");
-        manager.createItem("ORIENTACIÓN JUDÍA", "Establecimiento afiliado a la religión judía, centrado en la enseñanza y valores de la fe judía.");
-        manager.createItem("ORIENTACIÓN BUDISTA", "Establecimiento afiliado a la tradición budista, promoviendo los principios y enseñanzas del budismo.");
-        manager.createItem("ORIENTACIÓN RELIGIOSA OTRO", "Establecimiento con una orientación religiosa diferente a las principales mencionadas, o una combinación de varias.");
-        
-        
-        manager.createItem("FUNCIONANDO", "Establecimiento que se encuentra en funcionamiento activo.");
-        manager.createItem("EN RECESO", "Establecimiento que está temporalmente inactivo.");
-        manager.createItem("CERRADO", "Establecimiento que ha sido cerrado permanentemente.");
-        manager.createItem("AUTORIZADO SIN MATRICULA", "Establecimiento autorizado pero que no tiene matrícula activa de estudiantes.");
-        
+        // Crear ítems para definir estados operativos de los establecimientos.
+        manager.createItem("FUNCIONANDO", "Establecimiento en funcionamiento activo.");
+        manager.createItem("EN RECESO", "Establecimiento temporalmente inactivo.");
+        manager.createItem("CERRADO", "Establecimiento cerrado permanentemente.");
+        manager.createItem("AUTORIZADO SIN MATRICULA", "Establecimiento autorizado pero sin matrícula activa.");
+
+        // Crear ítems para tipos de gestión de los establecimientos.
         manager.createItem("CORPORACIÓN MUNICIPAL", "Entidad educativa gestionada por una corporación municipal.");
-        manager.createItem("MUNICIPAL DAEM", "Departamento de Administración de Educación Municipal (DAEM) responsable de la administración educativa.");
-        manager.createItem("PARTICULAR SUBVENCIONADO", "Establecimiento privado que recibe subvención estatal para el financiamiento de la educación.");
-        manager.createItem("PARTICULAR PAGADO", "Establecimiento privado que se financia completamente mediante pagos directos de las familias.");
-        manager.createItem("CORP. DE ADMINISTRACIÓN DELEGADA (DL 3166)", "Establecimiento gestionado bajo la normativa del Decreto Ley 3166 de administración delegada.");
+        manager.createItem("MUNICIPAL DAEM", "Departamento de Administración de Educación Municipal (DAEM).");
+        manager.createItem("PARTICULAR SUBVENCIONADO", "Establecimiento privado que recibe subvención estatal.");
+        manager.createItem("PARTICULAR PAGADO", "Establecimiento privado financiado por pagos directos.");
+        manager.createItem("CORP. DE ADMINISTRACIÓN DELEGADA (DL 3166)", "Establecimiento gestionado bajo el Decreto Ley 3166.");
         manager.createItem("SERVICIO LOCAL DE EDUCACIÓN", "Establecimiento gestionado por un Servicio Local de Educación Pública.");
-        // Crear propiedades para Regiones
-        String establecimientosRegionPropertyId = manager.createProperty("establecimientos en la zona", "Establecimientos educativos ubicados en la región", "wikibase-item");
-        String docentesRegionPropertyId = manager.createProperty("docentes en la Región", "Nombre de los docentes que trabajan en la región", "wikibase-item");
-
-        // Crear propiedades para Personas
-        String trabajoEstablecimientoPropertyId = manager.createProperty("establecimiento de Trabajo", "Nombre del establecimiento donde trabaja o trabajo una la persona", "wikibase-item");
-        String trabajoRegionPropertyId = manager.createProperty("región de trabajo", "Región donde trabaja se encuentra la entidad", "wikibase-item");
-        String trabajoComunaPropertyId = manager.createProperty("comuna de trabajo", "Comuna donde trabaja se encuentra la entidad", "wikibase-item");
+        
+        // Crear propiedades adicionales para regiones, personas y docentes.
+        String establecimientosRegionPropertyId = manager.createProperty("establecimientos en la zona", "Establecimientos educativos en la región", "wikibase-item");
+        String docentesRegionPropertyId = manager.createProperty("docentes en la Región", "Docentes que trabajan en la región", "wikibase-item");
+        String trabajoEstablecimientoPropertyId = manager.createProperty("establecimiento de Trabajo", "Establecimiento donde trabaja una persona", "wikibase-item");
+        String trabajoRegionPropertyId = manager.createProperty("región de trabajo", "Región donde trabaja la entidad", "wikibase-item");
+        String trabajoComunaPropertyId = manager.createProperty("comuna de trabajo", "Comuna donde trabaja la entidad", "wikibase-item");
         String nacimientoPropertyId = manager.createProperty("fecha de nacimiento", "Fecha de nacimiento del docente", "time");
         String generoDocentePropertyId = manager.createProperty("género del Docente", "Género del docente", "string");
-        String asignaturayId = manager.createProperty("asignatura", "Asignatura realizada por el docente", "string");
+        String asignaturayId = manager.createProperty("asignatura", "Asignatura que imparte el docente", "string");
         
-        // Propiedad del año
+        // Crear propiedad para el año.
         String añoId = manager.createProperty("año", "Fecha asociada a un evento", "time");
         
-        // Propiedad de instancia de
+        // Crear propiedad para definir la instancia de un objeto o entidad.
         String instanciaID = manager.createProperty("instancia de", "Instancia de un objeto o entidad", "wikibase-item");
-        
-        String comunaID = manager.createItem("COMUNA", "Una comuna es una subdivisión administrativa menor que corresponde a una zona urbana, rural o mixta.");
-        String regionID = manager.createItem("REGION", "El término región puede referirse a una porción de territorio​ con ciertas características comunes como el clima, la topografía o la administración.​");
-        String establecimientoID = manager.createItem("ESTABLECIMIENTO", "Conjunto de edificaciones, instalaciones y espacios que constituyen una unidad física diferenciada y en el que una misma persona o empresa titular ejerce una o más actividades.");
+
+        // Crear ítems para definir tipos de entidades como comuna, región, etc.
+        String comunaID = manager.createItem("COMUNA", "Una subdivisión administrativa menor.");
+        String regionID = manager.createItem("REGION", "Porción de territorio con características comunes.");
+        String establecimientoID = manager.createItem("ESTABLECIMIENTO", "Unidad física diferenciada que ejerce actividades.");
         String personaID = manager.createItem("PERSONA", "Individuo de la especie humana.");
-        
+
+        // Relacionar los ítems creados con la instancia "clase".
         String claseId = manager.createItem("CLASE", "Instancia de una clase.");
-  
         manager.addStatementToItem(comunaID, instanciaID, claseId, "wikibase-item");
         manager.addStatementToItem(regionID, instanciaID, claseId, "wikibase-item");
         manager.addStatementToItem(establecimientoID, instanciaID, claseId, "wikibase-item");
         manager.addStatementToItem(personaID, instanciaID, claseId, "wikibase-item");
-        
-        String generoId = manager.createProperty("identificador género", "Género asignado a una estadistica o valor", "wikibase-item");
+
+        // Definir propiedades relacionadas con el género.
+        String generoId = manager.createProperty("identificador género", "Género asignado a una estadística o valor", "wikibase-item");
         String hombreID = manager.createItem("HOMBRE", "Género masculino");
         String mujerID = manager.createItem("MUJER", "Género femenino");
         String nbID = manager.createItem("NO BINARIO", "Género no binario");
-        String sinifID = manager.createItem("SIN INFORMACION", "Sin informacion de género");
-        
+        String sinifID = manager.createItem("SIN INFORMACION", "Sin información de género");
         manager.addStatementToItem(hombreID, instanciaID, claseId, "wikibase-item");
         manager.addStatementToItem(mujerID, instanciaID, claseId, "wikibase-item");
         manager.addStatementToItem(nbID, instanciaID, claseId, "wikibase-item");
         manager.addStatementToItem(sinifID, instanciaID, claseId, "wikibase-item");
-        
+
+        // Definir propiedades relacionadas con el estado del establecimiento, matrícula, aprobaciones, etc.
         String estadoEstabId = manager.createProperty("estado del establecimiento", "Estado del establecimiento", "string");
         String matriculadosId = manager.createProperty("personas matrículadas", "Cantidad de personas matrículadas en un establecimiento", "quantity");
-        
         String apId = manager.createProperty("personas aprobadas", "Cantidad de personas aprobados en un establecimiento", "quantity");
         String reId = manager.createProperty("personas reprobadas", "Cantidad de personas reprobadas en un establecimiento", "quantity");
         String retId = manager.createProperty("personas retiradas", "Cantidad de personas retiradas en un establecimiento", "quantity");
         String tranId = manager.createProperty("personas transferidas", "Cantidad de personas trasferidas en un establecimiento", "quantity");
         String sfdId = manager.createProperty("personas situacion final desconocida", "Cantidad de personas sin informacion de su situacion final en un establecimiento", "quantity");
-        
         String codENSId = manager.createProperty("nivel de enseñanza", "Niveles de enseñanza agrupados", "string");
         String cursimId = manager.createProperty("total de cursos simples", "Total de cursos simples en el establecimiento", "quantity");
         String curcombId = manager.createProperty("total de cursos combinados", "Total de cursos combinados en el establecimiento", "quantity");
         String promAsisId = manager.createProperty("promedio de asistencia", "Porcentaje promedio de Asistencia de los alumnos de un mismo nivel de Enseñanza", "quantity");
-        
-        
+
+        // Crear ítems adicionales relacionados con tipos de establecimiento.
         manager.createItem("COLEGIO", "Establecimiento público donde se da a los niños la instrucción primaria.");
         manager.createItem("ESCUELA", "Lugar donde se imparte educación o formación.");
         manager.createItem("LICEO", "Establecimiento de enseñanza secundaria.");
@@ -129,6 +141,7 @@ public class wikibase_inicializador {
         manager.createItem("CENTRO", "Lugar donde se desarrollan actividades específicas.");
         manager.createItem("COMPLEJO", "Conjunto de instalaciones o edificios destinados a un fin común.");
         
+        // Crear ítems relacionados con niveles de enseñanza.
         manager.createItem("ENSEÑANZA BÁSICA", "nivel de enseñanza básica para niños");
         manager.createItem("EDUCACIÓN BÁSICA COMÚN ADULTOS (DECRETO 77/1982)", "nivel de educación básica común para adultos según el Decreto 77/1982");
         manager.createItem("EDUCACIÓN BÁSICA ESPECIAL ADULTOS", "nivel de educación básica especial para adultos");
@@ -194,3 +207,4 @@ public class wikibase_inicializador {
 	}
 
 }
+

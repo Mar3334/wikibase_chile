@@ -1,5 +1,6 @@
 package wikibase;
 
+// Importación de las bibliotecas necesarias para manejar CSV, solicitudes HTTP, análisis de JSON y codificación.
 import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvException;
 
@@ -24,35 +25,41 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-
+// Clase principal que gestiona la interacción con la API de Wikibase.
 public class WikibaseManager {
-	
-	private static final String API_ENDPOINT = "https://chileopendata.imfd.cl/w/api.php";
-    private final String username;
-    private final String password;
-    private final CloseableHttpClient httpClient;
-    private String loginToken;
-    private String csrfToken;
-    private String sessionCookie;
+    
+    // Declaración de constantes y variables para el endpoint de la API y las credenciales de usuario.
+    private static final String API_ENDPOINT = "https://chileopendata.imfd.cl/w/api.php";
+    private final String username;  // Nombre de usuario
+    private final String password;  // Contraseña del usuario
+    private final CloseableHttpClient httpClient;  // Cliente HTTP para realizar las solicitudes.
+    private String loginToken;  // Token utilizado para la autenticación de inicio de sesión.
+    private String csrfToken;  // Token utilizado para prevenir ataques CSRF.
+    private String sessionCookie; // Almacena la cookie de sesión después de un inicio de sesión exitoso.
 
+    // Constructor: inicializa el nombre de usuario, la contraseña y el cliente HTTP.
     public WikibaseManager(String username, String password) {
         this.username = username;
         this.password = password;
-        this.httpClient = HttpClients.createDefault();
+        this.httpClient = HttpClients.createDefault(); // Crea un cliente HTTP predeterminado para las solicitudes.
     }
 
+    // Método para obtener el token de inicio de sesión necesario para la autenticación.
     public void fetchLoginToken() throws IOException {
+        // Crear una solicitud HTTP GET para obtener el token de inicio de sesión de la API.
         HttpGet get = new HttpGet(API_ENDPOINT + "?action=query&meta=tokens&type=login&format=json");
         get.setHeader("Content-Type", "application/x-www-form-urlencoded");
 
+        // Ejecuta la solicitud HTTP y analiza la respuesta para extraer el token de inicio de sesión.
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
             this.loginToken = json.get("query").getAsJsonObject().get("tokens").getAsJsonObject().get("logintoken").getAsString();
-            System.out.println("Login Token: " + this.loginToken);
+            System.out.println("Token de Inicio de Sesión: " + this.loginToken);
         }
     }
 
+    // Método para realizar la acción de inicio de sesión utilizando el token de inicio de sesión obtenido.
     public void login() throws IOException {
         fetchLoginToken();
         
@@ -71,28 +78,54 @@ public class WikibaseManager {
         }
     }
 
+    // Método para obtener el token CSRF (Cross-Site Request Forgery) necesario para realizar acciones autenticadas en la API.
     public void fetchCsrfToken() throws IOException {
+        
+        // Crear una solicitud HTTP GET para obtener el token CSRF desde la API.
         HttpGet get = new HttpGet(API_ENDPOINT + "?action=query&meta=tokens&type=csrf&format=json");
+        
+        // Establecer el encabezado de tipo de contenido para la solicitud.
         get.setHeader("Content-Type", "application/x-www-form-urlencoded");
+        
+        // Incluir la cookie de sesión en los encabezados para mantener la autenticación.
         get.setHeader("Cookie", sessionCookie);
 
+        // Ejecutar la solicitud HTTP y procesar la respuesta para extraer el token CSRF.
         try (CloseableHttpResponse response = httpClient.execute(get)) {
+            
+            // Convertir la respuesta a una cadena de texto.
             String responseBody = EntityUtils.toString(response.getEntity());
+            
+            // Analizar la cadena JSON de la respuesta.
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
+            
+            // Extraer el token CSRF del objeto JSON.
             this.csrfToken = json.get("query").getAsJsonObject().get("tokens").getAsJsonObject().get("csrftoken").getAsString();
+            
+            // Imprimir el token CSRF para verificar que se obtuvo correctamente.
             System.out.println("CSRF Token: " + this.csrfToken);
         }
     }
 
+    // Método para crear una nueva propiedad en Wikibase
+    // Parámetros:
+    // - label: El nombre o etiqueta de la propiedad (en este caso en español).
+    // - description: La descripción de la propiedad (en español).
+    // - datatype: El tipo de dato de la propiedad (ejemplo: string, number, etc.).
+    // Lanza IOException en caso de fallos de conexión.
     public String createProperty(String label, String description, String datatype) throws IOException {
+        // Formatear el JSON con la etiqueta, descripción y tipo de dato para enviar a la API.
         String data = String.format("{\"labels\":{\"es\":{\"language\":\"es\",\"value\":\"%s\"}},\"descriptions\":{\"es\":{\"language\":\"es\",\"value\":\"%s\"}},\"datatype\":\"%s\"}",
                 label, description, datatype);
+        // Crear la entidad String para enviar en la solicitud POST, con el token CSRF codificado y los datos.
         StringEntity entity = new StringEntity(String.format("new=property&token=%s&data=%s", URLEncoder.encode(csrfToken, StandardCharsets.UTF_8.toString()), URLEncoder.encode(data, StandardCharsets.UTF_8.toString())));
 
+        // Preparar la solicitud HTTP POST para la API, estableciendo el endpoint adecuado para crear una nueva propiedad.
         HttpPost post = new HttpPost(API_ENDPOINT + "?action=wbeditentity&format=json");
         post.setEntity(entity);
         post.setHeader("Content-Type", "application/x-www-form-urlencoded");
 
+        // Ejecutar la solicitud HTTP y procesar la respuesta.
         try (CloseableHttpResponse response = httpClient.execute(post)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             System.out.println("Create Property response: " + responseBody);
@@ -101,15 +134,24 @@ public class WikibaseManager {
         }
     }
 
+    // Método para crear un nuevo ítem en Wikibase
+    // Parámetros:
+    // - label: El nombre o etiqueta del ítem (en este caso en español).
+    // - description: La descripción del ítem (en español).
+    // Lanza IOException en caso de fallos de conexión.
     public String createItem(String label, String description) throws IOException {
+        // Formatear el JSON con la etiqueta y descripción para enviar a la API.
         String data = String.format("{\"labels\":{\"es\":{\"language\":\"es\",\"value\":\"%s\"}},\"descriptions\":{\"es\":{\"language\":\"es\",\"value\":\"%s\"}}}",
                 label, description);
+        // Crear la entidad String para enviar en la solicitud POST, con el token CSRF codificado y los datos.
         StringEntity entity = new StringEntity(String.format("new=item&token=%s&data=%s", URLEncoder.encode(csrfToken, StandardCharsets.UTF_8.toString()), URLEncoder.encode(data, StandardCharsets.UTF_8.toString())));
 
+        // Preparar la solicitud HTTP POST para la API, estableciendo el endpoint adecuado para crear un nuevo ítem.
         HttpPost post = new HttpPost(API_ENDPOINT + "?action=wbeditentity&format=json");
         post.setEntity(entity);
         post.setHeader("Content-Type", "application/x-www-form-urlencoded");
 
+        // Ejecutar la solicitud HTTP y procesar la respuesta.
         try (CloseableHttpResponse response = httpClient.execute(post)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             System.out.println("Create Item response: " + responseBody);
@@ -117,22 +159,29 @@ public class WikibaseManager {
             return json.get("entity").getAsJsonObject().get("id").getAsString();
         }
     }
-    
+
+    // Método para añadir una declaración a un ítem en Wikibase
+    // Parámetros:
+    // - itemId: El ID del ítem al que se añadirá la declaración.
+    // - propertyId: El ID de la propiedad que se está utilizando en la declaración.
+    // - value: El valor que se asignará a la propiedad en la declaración.
+    // - valueType: El tipo de valor (ejemplo: string, quantity, time, globe-coordinate, wikibase-item).
     public String addStatementToItem(String itemId, String propertyId, String value, String valueType) throws IOException {
-        // Crear el valor principal de la declaración
-    	String mainValue = "";
-        
+        // Crear el valor principal de la declaración basado en el tipo de valor.
+        String mainValue = "";
+
         switch (valueType) {
             case "string":
-            	mainValue = String.format("\"%s\"", value);
+                mainValue = String.format("\"%s\"", value);
                 break;
             case "quantity":
                 mainValue = String.format("{\"amount\":\"+%s\",\"unit\":\"1\"}", value);
                 break;
             case "time":
-            	String year = value.substring(0, 4);
+                String year = value.substring(0, 4);
                 String month = value.substring(4, 6);
-            	mainValue = String.format("{\"time\":\"+%s-%s-01T00:00:00Z\",\"timezone\":0,\"before\":0,\"after\":0,\"precision\":10,\"calendarmodel\":\"http://www.wikidata.org/entity/Q1985727\"}", year, month);                break;
+                mainValue = String.format("{\"time\":\"+%s-%s-01T00:00:00Z\",\"timezone\":0,\"before\":0,\"after\":0,\"precision\":10,\"calendarmodel\":\"http://www.wikidata.org/entity/Q1985727\"}", year, month);
+                break;
             case "globe-coordinate":
                 String[] coordinates = value.replace(',', '.').split(";");
                 mainValue = String.format("{\"latitude\":%s,\"longitude\":%s,\"precision\":0.0001,\"globe\":\"http://www.wikidata.org/entity/Q2\"}", coordinates[0], coordinates[1]);
@@ -141,7 +190,6 @@ public class WikibaseManager {
                 mainValue = String.format("{\"entity-type\":\"item\",\"numeric-id\":%s}", value.replace("Q", ""));
                 break;
         }
-        
 
         // Crear los parámetros codificados como application/x-www-form-urlencoded
         String encodedToken = URLEncoder.encode(csrfToken, StandardCharsets.UTF_8.toString());
@@ -166,51 +214,59 @@ public class WikibaseManager {
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
             JsonObject claim = json.getAsJsonObject("claim");
             return claim.get("id").getAsString();
-        }  catch(Exception e) {
-        	
-        	throw e;
-        	
+        } catch(Exception e) {
+            throw e;
         }
     }
+
     
+    // Método para verificar si una entidad (ítem o propiedad) existe en Wikibase usando su ID.
     public boolean entityExists(String entityId) throws IOException {
+        // Construir la URL para solicitar información sobre la entidad.
         String url = API_ENDPOINT + "?action=wbgetentities&format=json&ids=" + entityId;
         HttpGet get = new HttpGet(url);
 
+        // Ejecutar la solicitud HTTP y procesar la respuesta.
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
             if (json.has("entities") && json.getAsJsonObject("entities").has(entityId)) {
-                // La entidad (ítem o propiedad) existe
+                // La entidad (ítem o propiedad) existe.
                 return true;
             } else {
-                // La entidad no existe
+                // La entidad no existe.
                 return false;
             }
         }
     }
-    
+
+    // Método para verificar si una entidad existe en Wikibase usando su etiqueta, tipo y lenguaje.
     public boolean entityExistsByLabel(String label, String type, String language) throws IOException {
+        // Construir la URL para buscar la entidad por etiqueta.
         String url = API_ENDPOINT + "?action=wbsearchentities&format=json&search=" + URLEncoder.encode(label, "UTF-8") + "&type=" + type + "&language=" + language;
         HttpGet get = new HttpGet(url);
 
+        // Ejecutar la solicitud HTTP y procesar la respuesta.
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
             if (json.has("search") && json.getAsJsonArray("search").size() > 0) {
-                // La entidad (ítem o propiedad) existe
+                // La entidad (ítem o propiedad) existe.
                 return true;
             } else {
-                // La entidad no existe
+                // La entidad no existe.
                 return false;
             }
         }
     }
-    
+
+    // Método para verificar si una entidad existe en Wikibase por su etiqueta y alias.
     public boolean entityExistsByAlias(String label, String alias, String type, String language) throws IOException {
+        // Construir la URL para buscar la entidad por etiqueta.
         String url = API_ENDPOINT + "?action=wbsearchentities&format=json&search=" + URLEncoder.encode(label, "UTF-8") + "&type=" + type + "&language=" + language;
         HttpGet get = new HttpGet(url);
 
+        // Ejecutar la solicitud HTTP y procesar la respuesta.
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
@@ -218,12 +274,10 @@ public class WikibaseManager {
                 for (JsonElement element : json.getAsJsonArray("search")) {
                     JsonObject entity = element.getAsJsonObject();
                     String entityLabel = entity.getAsJsonObject("label").get("value").getAsString();
-                 
 
-                    // Check if the label matches
+                    // Verificar si la etiqueta coincide.
                     if (entityLabel.equalsIgnoreCase(label)) {
-                        
-                        // Check if the alias matches
+                        // Verificar si el alias coincide.
                         if (entity.has("aliases")) {
                             JsonObject aliasesObject = entity.getAsJsonObject("aliases");
                             if (aliasesObject.has(language)) {
@@ -232,42 +286,47 @@ public class WikibaseManager {
                                     JsonObject aliasObject = aliasElement.getAsJsonObject();
                                     String aliasValue = aliasObject.get("value").getAsString();
                                     if (aliasValue.equalsIgnoreCase(alias)) {
-                                        return true;
+                                        return true; // La entidad existe.
                                     }
                                 }
                             }
                         }
-
                     }
                 }
             }
-            // La entidad no existe
+            // La entidad no existe.
             return false;
         }
     }
-    
+
+    // Método para obtener el ID de una entidad en Wikibase usando su etiqueta, tipo y lenguaje.
     public String getEntityByLabel(String label, String type, String language) throws IOException {
+        // Construir la URL para buscar la entidad por etiqueta.
         String url = API_ENDPOINT + "?action=wbsearchentities&format=json&search=" + URLEncoder.encode(label, "UTF-8") + "&type=" + type + "&language=" + language;
         HttpGet get = new HttpGet(url);
 
+        // Ejecutar la solicitud HTTP y procesar la respuesta.
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
             if (json.has("search") && json.getAsJsonArray("search").size() > 0) {
                 JsonObject firstResult = json.getAsJsonArray("search").get(0).getAsJsonObject();
-                // Return the ID of the entity if it exists
+                // Devolver el ID de la entidad si existe.
                 return firstResult.get("id").getAsString();
             } else {
-                // The entity does not exist
+                // La entidad no existe.
                 return null;
             }
         }
     }
-    
+
+    // Método para verificar si existe una declaración específica en un ítem de Wikibase.
     public boolean statementExists(String itemId, String propertyId, String value) throws IOException {
+        // Construir la URL para obtener las declaraciones del ítem.
         String url = API_ENDPOINT + "?action=wbgetclaims&format=json&entity=" + itemId + "&property=" + propertyId;
         HttpGet get = new HttpGet(url);
 
+        // Ejecutar la solicitud HTTP y procesar la respuesta.
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
@@ -280,47 +339,42 @@ public class WikibaseManager {
                         JsonObject dataValue = mainsnak.getAsJsonObject("datavalue");
                         String dataType = mainsnak.get("datatype").getAsString();
 
+                        // Comprobar si el valor coincide según el tipo de dato.
                         if (dataType.equals("wikibase-item") && dataValue.getAsJsonObject("value").has("numeric-id")) {
-                            // Comparar con el ID del ítem (Q)
                             String claimValue = "Q" + dataValue.getAsJsonObject("value").get("numeric-id").getAsString();
                             if (claimValue.equals(value)) {
-                                return true; // La declaración existe
+                                return true; // La declaración existe.
                             }
                         } else if (dataType.equals("string") && dataValue.has("value")) {
-                            // Comparar con un string
                             String claimValue = dataValue.get("value").getAsString();
                             if (claimValue.equals(value)) {
-                                return true; // La declaración existe
+                                return true; // La declaración existe.
                             }
                         } else if (dataType.equals("quantity") && dataValue.has("value")) {
-                            // Comparar con un string
                             String claimValue = dataValue.get("value").getAsJsonObject().get("amount").getAsString();
-                            if (claimValue.equals("+"+value)) {
-                                return true; // La declaración existe
+                            if (claimValue.equals("+" + value)) {
+                                return true; // La declaración existe.
                             }
                         } else if (dataType.equals("time") && dataValue.has("value")) {
-                            // Comparar con un string
-                        	// Extraer el año y el mes usando substring
-                            String year = value.substring(0, 4); 
+                            String year = value.substring(0, 4);
                             String month = value.substring(4, 6);
                             String claimValue = dataValue.get("value").getAsJsonObject().get("time").getAsString();
-                            if (claimValue.contains("+" + year + "-" + month )) {
-                                return true; // La declaración existe
+                            if (claimValue.contains("+" + year + "-" + month)) {
+                                return true; // La declaración existe.
                             }
-                        }
-                        else if (dataType.equals("globe-coordinate") && dataValue.has("value")) {
-                            // Comparar con un string
-                            return true;
+                        } else if (dataType.equals("globe-coordinate") && dataValue.has("value")) {
+                            return true; // Asume que las coordenadas coinciden.
                         }
                     }
                 }
             }
-            return false; // La declaración no existe
+            return false; // La declaración no existe.
         }
     }
-    
+
+    // Método para añadir un calificador a una declaración existente en Wikibase.
     public void addQualifierToStatement(String statementId, String qualifierPropertyId, String qualifierValue, String qualifierType) throws IOException {
-        // Construir el valor del calificador basado en el tipo de propiedad
+        // Construir el valor del calificador basado en el tipo de propiedad.
         String qualifierValueFormatted;
         if ("time".equals(qualifierType)) {
             qualifierValueFormatted = String.format("{\"time\":\"+%s-01-01T00:00:00Z\",\"timezone\":0,\"before\":0,\"after\":0,\"precision\":9,\"calendarmodel\":\"http://www.wikidata.org/entity/Q1985727\"}", qualifierValue);
@@ -332,7 +386,7 @@ public class WikibaseManager {
             throw new IllegalArgumentException("Unsupported qualifier type: " + qualifierType);
         }
 
-        // Crear los parámetros codificados como application/x-www-form-urlencoded
+        // Crear los parámetros codificados como application/x-www-form-urlencoded.
         String encodedToken = URLEncoder.encode(csrfToken, StandardCharsets.UTF_8.toString());
         String encodedQualifierValue = URLEncoder.encode(qualifierValueFormatted, StandardCharsets.UTF_8.toString());
 
@@ -341,71 +395,69 @@ public class WikibaseManager {
                 URLEncoder.encode(qualifierPropertyId, StandardCharsets.UTF_8.toString()),
                 encodedQualifierValue, encodedToken);
 
-        // Crear la entidad StringEntity con los datos codificados
-        StringEntity entity = new StringEntity(postData, StandardCharsets.UTF_8);
-
-        // Configurar y ejecutar la solicitud POST
+        // Configurar y ejecutar la solicitud POST para añadir el calificador.
         HttpPost post = new HttpPost(API_ENDPOINT + "?action=wbsetqualifier&format=json");
-        post.setEntity(entity);
+        post.setEntity(new StringEntity(postData, StandardCharsets.UTF_8));
         post.setHeader("Content-Type", "application/x-www-form-urlencoded");
 
-        // Ejecutar la solicitud y procesar la respuesta
+        // Ejecutar la solicitud y procesar la respuesta.
         try (CloseableHttpResponse response = httpClient.execute(post)) {
-        	
-        	//System.out.println(qualifierPropertyId);
-        	//System.out.println(qualifierValue);
-        	//System.out.println(qualifierType);
             String responseBody = EntityUtils.toString(response.getEntity());
             System.out.println("Add Qualifier response: " + responseBody);
         }
     }
-    
+
+    // Método para obtener las declaraciones de un ítem en Wikibase.
     public JsonObject getClaims(String itemId) throws IOException {
+        // Construir la URL para obtener las declaraciones del ítem.
         String url = API_ENDPOINT + "?action=wbgetclaims&entity=" + URLEncoder.encode(itemId, StandardCharsets.UTF_8.toString()) + "&format=json";
         HttpGet get = new HttpGet(url);
 
+        // Ejecutar la solicitud HTTP y devolver el JSON de las declaraciones.
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             String responseBody = EntityUtils.toString(response.getEntity());
-            JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
-            return json.getAsJsonObject("claims");
+            return JsonParser.parseString(responseBody).getAsJsonObject().getAsJsonObject("claims");
         }
     }
-    
+
+    // Método para eliminar declaraciones específicas de un ítem en Wikibase.
     public void removeRegionClaims(String itemId, String claimId) throws IOException {
-        // Crear los parámetros codificados como application/x-www-form-urlencoded
+        // Crear los parámetros codificados como application/x-www-form-urlencoded.
         String encodedToken = URLEncoder.encode(csrfToken, StandardCharsets.UTF_8.toString());
         String encodedItemId = URLEncoder.encode(itemId, StandardCharsets.UTF_8.toString());
 
-        // Crear el objeto JSON para eliminar el claim
+        // Crear el objeto JSON para eliminar el claim.
         String data = String.format("{\"claims\":[{\"id\":\"%s\",\"remove\":\"true\"}]}", claimId);
 
         String postData = String.format("id=%s&data=%s&token=%s", 
             encodedItemId, URLEncoder.encode(data, StandardCharsets.UTF_8.toString()), encodedToken);
 
-        // Crear la entidad StringEntity con los datos codificados
-        StringEntity entity = new StringEntity(postData, StandardCharsets.UTF_8);
-
-        // Configurar y ejecutar la solicitud POST para eliminar el claim
+        // Configurar y ejecutar la solicitud POST para eliminar el claim.
         HttpPost post = new HttpPost(API_ENDPOINT + "?action=wbeditentity&format=json");
-        post.setEntity(entity);
+        post.setEntity(new StringEntity(postData, StandardCharsets.UTF_8));
         post.setHeader("Content-Type", "application/x-www-form-urlencoded");
 
-        // Ejecutar la solicitud y procesar la respuesta
+        // Ejecutar la solicitud y procesar la respuesta.
         try (CloseableHttpResponse response = httpClient.execute(post)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             System.out.println("Response: " + responseBody);
         }
     }
+
     
+    // Método para obtener el ID de una declaración en un ítem de Wikibase según el valor y tipo de dato.
     public String getStatementId(String itemId, String propertyId, String value, String valueType) throws IOException {
+        // Construir la URL para obtener las declaraciones del ítem.
         String url = API_ENDPOINT + "?action=wbgetclaims&entity=" + URLEncoder.encode(itemId, StandardCharsets.UTF_8.toString()) + "&format=json";
         HttpGet get = new HttpGet(url);
         
+        // Ejecutar la solicitud HTTP y procesar la respuesta.
         try (CloseableHttpResponse response = httpClient.execute(get)) {
             String responseBody = EntityUtils.toString(response.getEntity());
             JsonObject json = JsonParser.parseString(responseBody).getAsJsonObject();
             JsonObject claims = json.getAsJsonObject("claims");
 
+            // Verificar si existen declaraciones para la propiedad dada.
             if (claims.has(propertyId)) {
                 JsonArray propertyClaims = claims.getAsJsonArray(propertyId);
                 for (JsonElement claimElement : propertyClaims) {
@@ -416,32 +468,35 @@ public class WikibaseManager {
                         JsonObject dataValue = mainsnak.getAsJsonObject("datavalue");
                         String dataType = mainsnak.get("datatype").getAsString();
                         
+                        // Comprobaciones según el tipo de valor.
                         if (valueType.equals("wikibase-item") && dataType.equals("wikibase-item") && dataValue.getAsJsonObject("value").has("numeric-id")) {
                             String claimValue = "Q" + dataValue.getAsJsonObject("value").get("numeric-id").getAsString();
                             if (claimValue.equals(value)) {
-                                return claim.get("id").getAsString(); // Return the statement ID
+                                return claim.get("id").getAsString(); // Retornar el ID de la declaración.
                             }
                         } else if (valueType.equals("string") && dataType.equals("string") && dataValue.get("value").getAsString().equals(value)) {
-                            return claim.get("id").getAsString(); // Return the statement ID
+                            return claim.get("id").getAsString(); // Retornar el ID de la declaración.
                         } else if (valueType.equals("quantity") && dataType.equals("quantity") && dataValue.get("value").getAsJsonObject().get("amount").getAsString().equals("+" + value)) {
-                            return claim.get("id").getAsString(); // Return the statement ID
+                            return claim.get("id").getAsString(); // Retornar el ID de la declaración.
                         } else if (valueType.equals("time") && dataType.equals("time") && dataValue.get("time").getAsString().equals("+" + value + "-01-01T00:00:00Z")) {
-                            return claim.get("id").getAsString(); // Return the statement ID
+                            return claim.get("id").getAsString(); // Retornar el ID de la declaración.
                         }
                     }
                 }
             }
         }
-        return null; // No matching statement found
+        return null; // No se encontró ninguna declaración coincidente.
     }
-    
+
+    // Método para verificar si existe una declaración con un calificador específico en un ítem de Wikibase.
     public boolean doesStatementWithQualifierExist(String itemId, String propertyId, String value, String qualifierPropertyId, String qualifierValue) throws IOException {
+        // Obtener las declaraciones del ítem.
         JsonObject claims = getClaims(itemId);
         if (claims.has(propertyId)) {
             JsonArray propertyClaims = claims.getAsJsonArray(propertyId);
             for (JsonElement claimElement : propertyClaims) {
                 JsonObject claim = claimElement.getAsJsonObject();
-                // Verificar el valor del mainsnak
+                // Verificar el valor del mainsnak.
                 if (claim.get("mainsnak").getAsJsonObject().get("datavalue").getAsJsonObject().get("value").isJsonObject()) {
                     JsonObject datavalue = claim.get("mainsnak").getAsJsonObject().get("datavalue").getAsJsonObject();
                     String datatype = datavalue.get("type").getAsString();
@@ -463,7 +518,7 @@ public class WikibaseManager {
                         continue;
                     }
                 } 
-                // Verificar la existencia de calificadores
+                // Verificar la existencia de calificadores.
                 if (!claim.has("qualifiers")) {
                     return false;
                 }
@@ -479,7 +534,7 @@ public class WikibaseManager {
                         if (qualifierPropertyId.equals(property)) {
                             JsonObject qualifierDatavalue = jsonObject.getAsJsonObject("datavalue").getAsJsonObject("value");
                             
-                            // Verificación específica para P28 (wikibase-item)
+                            // Verificación específica para entidades de tipo "wikibase-item".
                             if ("wikibase-entityid".equals(jsonObject.getAsJsonObject("datavalue").get("type").getAsString())) {
                                 if (qualifierDatavalue.get("id").getAsString().equals(qualifierValue)) {
                                     return true;
@@ -494,12 +549,12 @@ public class WikibaseManager {
                 }
             }
         }
-        return false; // La declaración y el calificador no existen
+        return false; // La declaración y el calificador no existen.
     }
-    
-    public void addAlias(String itemId, String alias, String language) throws IOException {
 
-        // Crear los parámetros codificados como application/x-www-form-urlencoded
+    // Método para añadir un alias a un ítem en Wikibase.
+    public void addAlias(String itemId, String alias, String language) throws IOException {
+        // Crear los parámetros codificados como application/x-www-form-urlencoded.
         String encodedToken = URLEncoder.encode(csrfToken, StandardCharsets.UTF_8.toString());
         String encodedAliasValue = URLEncoder.encode(alias, StandardCharsets.UTF_8.toString());
 
@@ -507,23 +562,22 @@ public class WikibaseManager {
                 URLEncoder.encode(itemId, StandardCharsets.UTF_8.toString()),
                 encodedAliasValue, encodedToken);
 
-        // Crear la entidad StringEntity con los datos codificados
-        StringEntity entity = new StringEntity(postData, StandardCharsets.UTF_8);
-
-        // Configurar y ejecutar la solicitud POST
+        // Configurar y ejecutar la solicitud POST.
         HttpPost post = new HttpPost(API_ENDPOINT + "?action=wbsetaliases&format=json&language=" + language);
-        post.setEntity(entity);
+        post.setEntity(new StringEntity(postData, StandardCharsets.UTF_8));
         post.setHeader("Content-Type", "application/x-www-form-urlencoded");
 
-        // Ejecutar la solicitud y procesar la respuesta
+        // Ejecutar la solicitud y procesar la respuesta.
         try (CloseableHttpResponse response = httpClient.execute(post)) {
             String responseBody = EntityUtils.toString(response.getEntity());
         }
     }
-    
+
+    // Método estático para obtener posiciones en orden según listas de variables.
     public static List<Integer> getPositionsInOrder(List<VariablePosition> variablePositions, List<String> orderedVariables) {
         List<Integer> positions = new ArrayList<>();
 
+        // Iterar a través de las variables ordenadas y buscar sus posiciones.
         for (String variable : orderedVariables) {
             for (VariablePosition vp : variablePositions) {
                 if (vp.getVariable().equals(variable)) {
@@ -535,8 +589,8 @@ public class WikibaseManager {
 
         return positions;
     }
-    
- // Método auxiliar para comprobar si el conjunto contiene el elemento, ignorando mayúsculas y minúsculas
+
+    // Método auxiliar para comprobar si el conjunto contiene un elemento, ignorando mayúsculas y minúsculas.
     private static boolean containsIgnoreCase(Set<String> set, String value) {
         for (String item : set) {
             if (value.contains(item.toUpperCase())) {
@@ -546,10 +600,12 @@ public class WikibaseManager {
         return false;
     }
 
+    // Método principal para la ejecución del programa.
+    // Este método se encarga de procesar datos de un archivo CSV y realizar operaciones en Wikibase.
     public static void main(String[] args) throws IOException {
-    	
-    
-    	    	
+
+        //Iniciamos en Manager
+
     	WikibaseManager manager;
     	
     	String username = "";
@@ -563,22 +619,24 @@ public class WikibaseManager {
             
         } else {
         	System.out.println("Corriendo con argumentos");
-        	username = args[0];
-            password = args[1];
-            csvFile = args[2];
+        	username = args[0];  // Usuario
+            password = args[1];  //Contraseña
+            csvFile = args[2];  // Ruta al archivo CSV
+            // Si se indica cuantas lineas se deben leer de una, se guarda, en caso contrario, se leen un maximo de 20
             if (args.length >= 4) {
             	max_read = Math.max(Integer.parseInt(args[3]), 1);
-            
             }
             else {
             	max_read = 20;
             }
         }
-
+        
+        // Se inicializa el manager y se logea y consigue el CSRF Token
         manager = new WikibaseManager(username, password);
         manager.login();
         manager.fetchCsrfToken();
         
+        // Diccionario de propiedades. Llave: nombre de la columna, Valor: nombre o código de la propiedad en Wikibase.
         LinkedHashMap<String, String> diccionarioPropiedades = new LinkedHashMap<>();
         diccionarioPropiedades.put("DC_TOT", "empleados");
         diccionarioPropiedades.put("LATITUD", "ubicacion");
@@ -620,8 +678,8 @@ public class WikibaseManager {
         diccionarioPropiedades.put("SI_HOM_TO", "personas situacion final desconocida");
         diccionarioPropiedades.put("SI_MUJ_TO", "personas situacion final desconocida");
         diccionarioPropiedades.put("SI_SI_TO", "personas situacion final desconocida");
-        
-        
+
+        // Diccionario de propiedades con cualificadores. Llave: nombre o código de la propiedad en Wikibase, Valor: tipo del dato.
         LinkedHashMap<String, String> diccionarioPropiedadesConCualificador = new LinkedHashMap<>();
         diccionarioPropiedadesConCualificador.put("empleados", "quantity");
         diccionarioPropiedadesConCualificador.put("matrículados total", "quantity");
@@ -636,8 +694,8 @@ public class WikibaseManager {
         diccionarioPropiedadesConCualificador.put("personas retiradas", "quantity");
         diccionarioPropiedadesConCualificador.put("personas transferidas", "quantity");
         diccionarioPropiedadesConCualificador.put("personas situacion final desconocida", "quantity");
-        
-        
+
+        // Diccionario de propiedades sin cualificadores. Llave: nombre o código de la propiedad en Wikibase, Valor: tipo del dato.
         LinkedHashMap<String, String> diccionarioPropiedadesSinCualificador = new LinkedHashMap<>();
         diccionarioPropiedadesSinCualificador.put("ubicacion", "globe-coordinate");
         diccionarioPropiedadesSinCualificador.put("fecha de nacimiento", "time");
@@ -646,8 +704,9 @@ public class WikibaseManager {
         diccionarioPropiedadesSinCualificador.put("P38", "wikibase-item");
         diccionarioPropiedadesSinCualificador.put("P36", "wikibase-item");
         diccionarioPropiedadesSinCualificador.put("P40", "wikibase-item");
+
         
-        
+        // Niveles de educación mapeados en un diccionario
         Map<String, String> educationalLevels = new LinkedHashMap<>();
 
         educationalLevels.put("110", "Q17346"); // ENSEÑANZA BÁSICA
@@ -683,69 +742,73 @@ public class WikibaseManager {
         educationalLevels.put("910", "Q17371"); // ENSEÑANZA MEDIA ARTÍSTICA NIÑOS Y JÓVENES
         educationalLevels.put("963", "Q17372"); // EDUCACIÓN MEDIA ARTÍSTICA ADULTOS
         
-    	
+    	// Variable para guardar el cualificador del año
     	String cualificador = "0001";
     	
-    	String yearPropertyId = manager.getEntityByLabel("año", "property", "es");
+        // Se extrae la propiedad del año desde Wikibase, obteniendo el ID de la propiedad "año" en español.
+        String yearPropertyId = manager.getEntityByLabel("año", "property", "es");
 
-    	Set<String> identificadorEstablecimiento = new HashSet<>(Arrays.asList(
-    			"NOM_RBD",
-    			"NOM_REG_RBD_A",
-    			"NOM_COM_RBD"
+        // Columnas que representan el objeto "establecimiento"
+        // Conjunto de identificadores para reconocer un establecimiento (por nombre, región, comuna, etc.).
+        Set<String> identificadorEstablecimiento = new HashSet<>(Arrays.asList(
+            "NOM_RBD",         // Nombre del establecimiento
+            "NOM_REG_RBD_A",   // Nombre de la región del establecimiento
+            "NOM_COM_RBD"      // Nombre de la comuna del establecimiento
         ));
-    	
-    	Set<String> propEstablecimiento = new HashSet<>(Arrays.asList(
-                "DC_TOT",
-                "LATITUD",
-                "LONGITUD",
-                "MAT_TOTAL",
-                "ESTADO_ESTAB",
-                "COD_ENSE",
-                "PROM_ASIS", "CUR_SIM_TOT", "CUR_COMB_TOT", "MAT_HOM_TOT",
-                "MAT_MUJ_TOT", "MAT_SI_TOT", "APR_HOM_TO", "APR_MUJ_TO",
-                "APR_SI_TO", "APR_NB", "REP_HOM_TO", "REP_MUJ_TO",
-                "REP_SI_TO", "RET_HOM_TO", "RET_MUJ_TO", "RET_SI_TO",
-                "TRA_HOM_TO", "TRA_SI_TO", "TRA_MUJ_TO", "SI_HOM_TO",
-                "SI_MUJ_TO", "SI_SI_TO", "COD_DEPE", "RURAL_RBD", "ORI_RELIGIOSA"
+
+        // Conjunto de propiedades relacionadas con un establecimiento.
+        Set<String> propEstablecimiento = new HashSet<>(Arrays.asList(
+            "DC_TOT", "LATITUD", "LONGITUD", "MAT_TOTAL", "ESTADO_ESTAB", "COD_ENSE",
+            "PROM_ASIS", "CUR_SIM_TOT", "CUR_COMB_TOT", "MAT_HOM_TOT", "MAT_MUJ_TOT",
+            "MAT_SI_TOT", "APR_HOM_TO", "APR_MUJ_TO", "APR_SI_TO", "APR_NB", "REP_HOM_TO",
+            "REP_MUJ_TO", "REP_SI_TO", "RET_HOM_TO", "RET_MUJ_TO", "RET_SI_TO",
+            "TRA_HOM_TO", "TRA_SI_TO", "TRA_MUJ_TO", "SI_HOM_TO", "SI_MUJ_TO",
+            "SI_SI_TO", "COD_DEPE", "RURAL_RBD", "ORI_RELIGIOSA"
         ));
-    	
-    	
-    	Set<String> identificadorRegion = new HashSet<>(Arrays.asList(
-    			"NOM_REG_RBD_A"
+
+        // Conjunto de identificadores para reconocer una región.
+        Set<String> identificadorRegion = new HashSet<>(Arrays.asList(
+            "NOM_REG_RBD_A"  // Nombre de la región
         ));
-    	
-    	Set<String> propRegion = new HashSet<>(Arrays.asList(
-    			
+
+        // Conjunto de propiedades relacionadas con una región (actualmente vacío, pero definido para posible extensión).
+        Set<String> propRegion = new HashSet<>(Arrays.asList(
+            // Sin propiedades específicas añadidas para la región
         ));
-    	
-    	Set<String> identificadorComuna = new HashSet<>(Arrays.asList(
-    			"NOM_COM_RBD"
+
+        // Conjunto de identificadores para reconocer una comuna.
+        Set<String> identificadorComuna = new HashSet<>(Arrays.asList(
+            "NOM_COM_RBD"  // Nombre de la comuna
         ));
-    	
-    	Set<String> propComuna = new HashSet<>(Arrays.asList(
+
+        // Conjunto de propiedades relacionadas con una comuna (actualmente vacío, pero definido para posible extensión).
+        Set<String> propComuna = new HashSet<>(Arrays.asList(
+            // Sin propiedades específicas añadidas para la comuna
         ));
-    	
-    	
-    	Set<String> identificadorDocente = new HashSet<>(Arrays.asList(
-    			"MRUN"
+
+        // Conjunto de identificadores para reconocer un docente.
+        Set<String> identificadorDocente = new HashSet<>(Arrays.asList(
+            "MRUN"  // ID único del docente
         ));
-    	
-    	Set<String> propDocente = new HashSet<>(Arrays.asList(
-                "DOC_FEC_NAC",
-                "DOC_GENERO",
-                "NOM_SUBSECTOR"
+
+        // Conjunto de propiedades relacionadas con un docente.
+        Set<String> propDocente = new HashSet<>(Arrays.asList(
+            "DOC_FEC_NAC",   // Fecha de nacimiento del docente
+            "DOC_GENERO",    // Género del docente
+            "NOM_SUBSECTOR"  // Asignatura del docente
         ));
-    	
-    	LinkedHashMap<String, String> diccionarioPropiedadesId = new LinkedHashMap<>();
-    	
-    	
-    	Set<String> hombresSet = new HashSet<>();
+
+        // Diccionario para almacenar los IDs de propiedades asignados a las variables.
+        LinkedHashMap<String, String> diccionarioPropiedadesId = new LinkedHashMap<>();
+
+        // Conjuntos para clasificar diferentes tipos de variables según género y otras categorías.
+        Set<String> hombresSet = new HashSet<>();
         Set<String> mujeresSet = new HashSet<>();
-        Set<String> nbSet = new HashSet<>();
-        Set<String> siSet = new HashSet<>();
-        Set<String> todasVariablesSet = new HashSet<>();
+        Set<String> nbSet = new HashSet<>();  // Variables de no binario
+        Set<String> siSet = new HashSet<>();  // Variables sin información específica
+        Set<String> todasVariablesSet = new HashSet<>();  // Combina todos los conjuntos anteriores
 
-        // Variables de hombres
+        // Variables relacionadas con hombres.
         hombresSet.add("MAT_HOM_TOT");
         hombresSet.add("APR_HOM_TO");
         hombresSet.add("REP_HOM_TO");
@@ -753,7 +816,7 @@ public class WikibaseManager {
         hombresSet.add("TRA_HOM_TO");
         hombresSet.add("SI_HOM_TO");
 
-        // Variables de mujeres
+        // Variables relacionadas con mujeres.
         mujeresSet.add("MAT_MUJ_TOT");
         mujeresSet.add("APR_MUJ_TO");
         mujeresSet.add("REP_MUJ_TO");
@@ -761,22 +824,23 @@ public class WikibaseManager {
         mujeresSet.add("TRA_MUJ_TO");
         mujeresSet.add("SI_MUJ_TO");
 
-        // Variables de NB (no binario)
+        // Variables relacionadas con no binario (NB).
         nbSet.add("APR_NB");
 
-        // Variables de SI (sin información específica)
+        // Variables relacionadas con "sin información" (SI).
         siSet.add("MAT_SI_TOT");
         siSet.add("APR_SI_TO");
         siSet.add("REP_SI_TO");
         siSet.add("RET_SI_TO");
         siSet.add("TRA_SI_TO");
         siSet.add("SI_SI_TO");
-        
-     // Combinar todos los conjuntos en un quinto conjunto
+
+        // Combinar todos los conjuntos en un conjunto único que agrupe todas las variables.
         todasVariablesSet.addAll(hombresSet);
         todasVariablesSet.addAll(mujeresSet);
         todasVariablesSet.addAll(nbSet);
         todasVariablesSet.addAll(siSet);
+
         
         
         // Instituciones
@@ -812,425 +876,418 @@ public class WikibaseManager {
 
         try {
 
-        	List<VariablePosition> matchEstablecimiento = new ArrayList<>();
-        	List<VariablePosition> matchRegion = new ArrayList<>();
-        	List<VariablePosition> matchComuna = new ArrayList<>();
-        	List<VariablePosition> matchDocente = new ArrayList<>();
-        	
-        	List<VariablePosition> matchingPropEstablecimiento = new ArrayList<>();
-        	List<VariablePosition> matchingPropRegion = new ArrayList<>();
-        	List<VariablePosition> matchingComunaRegion = new ArrayList<>();
-        	List<VariablePosition> matchingPropDocente = new ArrayList<>();
-        	
-        	
-        	int posicionCodEnse = -1; 
-        	
-        
+            // Listas para almacenar coincidencias de variables relacionadas con cada tipo de objeto.
+            List<VariablePosition> matchEstablecimiento = new ArrayList<>(); // Coincidencias para "establecimiento"
+            List<VariablePosition> matchRegion = new ArrayList<>(); // Coincidencias para "región"
+            List<VariablePosition> matchComuna = new ArrayList<>(); // Coincidencias para "comuna"
+            List<VariablePosition> matchDocente = new ArrayList<>(); // Coincidencias para "docente"
+
+            // Listas para almacenar coincidencias de propiedades específicas.
+            List<VariablePosition> matchingPropEstablecimiento = new ArrayList<>(); // Propiedades de "establecimiento"
+            List<VariablePosition> matchingPropRegion = new ArrayList<>(); // Propiedades de "región"
+            List<VariablePosition> matchingComunaRegion = new ArrayList<>(); // Propiedades de "comuna y región"
+            List<VariablePosition> matchingPropDocente = new ArrayList<>(); // Propiedades de "docente"
+
+            int posicionCodEnse = -1; // Posición de la columna "COD_ENSE" en el CSV, inicializada en -1.
+
+            // Intento de lectura del archivo CSV.
             try (CSVReader reader = new CSVReader(new FileReader(csvFile))) {
-                // Read the first line which contains the column names
+                // Leer la primera línea que contiene los nombres de las columnas.
                 String[] columnNamesLine = reader.readNext();
                 
                 if (columnNamesLine != null && columnNamesLine.length > 0) {
-                   
+                    // Variable para concatenar los nombres de las columnas.
                     String columnNamesString = "";
                     
-					for (String line : columnNamesLine) {
-                		
-						columnNamesString = columnNamesString + line;
-                		
-                	}
-                                        
-                    // Split the string into individual column names
-                    String[] columnNames = columnNamesString.split(";");
-                    
-                    // Clean column names by trimming any whitespace
-                    for (int i = 0; i < columnNames.length; i++) {
-                        columnNames[i] = columnNames[i].trim().replaceAll("[^\\p{Print}]", "").replaceAll("\"", "");;
+                    // Concatenar todos los nombres de columnas en una sola cadena.
+                    for (String line : columnNamesLine) {
+                        columnNamesString = columnNamesString + line;
                     }
                     
-                    // Check against predefined variables
+                    // Dividir la cadena en nombres individuales de columnas.
+                    String[] columnNames = columnNamesString.split(";");
+                    
+                    // Limpiar los nombres de columnas eliminando espacios en blanco y caracteres no imprimibles.
+                    for (int i = 0; i < columnNames.length; i++) {
+                        columnNames[i] = columnNames[i].trim().replaceAll("[^\\p{Print}]", "").replaceAll("\"", "");
+                    }
+                    
+                    // Verificar los nombres de columnas contra variables predefinidas.
                     for (int i = 0; i < columnNames.length; i++) {
                         String columnName = columnNames[i];
+                        // Identificar si la columna pertenece a propiedades de establecimiento.
                         if (propEstablecimiento.contains(columnName)) {
-                        	matchingPropEstablecimiento.add(new VariablePosition(columnName, i));
-                        	
-                        	if (columnName.equals("COD_ENSE")) {
-                        		
-                        		posicionCodEnse = i;
-                        		
-                        	}
-                        	
+                            matchingPropEstablecimiento.add(new VariablePosition(columnName, i));
+                            
+                            // Verificar si la columna es "COD_ENSE" para registrar su posición.
+                            if (columnName.equals("COD_ENSE")) {
+                                posicionCodEnse = i;
+                            }
                         }
+                        
+                        // Identificar propiedades relacionadas con la región.
                         if (propRegion.contains(columnName)) {
-                        	matchingPropRegion.add(new VariablePosition(columnName, i));
+                            matchingPropRegion.add(new VariablePosition(columnName, i));
                         }
+                        
+                        // Identificar propiedades relacionadas con la comuna.
                         if (propComuna.contains(columnName)) {
-                        	matchingComunaRegion.add(new VariablePosition(columnName, i));
+                            matchingComunaRegion.add(new VariablePosition(columnName, i));
                         }
+                        
+                        // Identificar propiedades relacionadas con el docente.
                         if (propDocente.contains(columnName)) {
-                        	matchingPropDocente.add(new VariablePosition(columnName, i));
-                        }
-                        if ((columnName.compareTo("AGNO")) == 0){
-                        	cualificador = String.valueOf(i);
+                            matchingPropDocente.add(new VariablePosition(columnName, i));
                         }
                         
+                        // Verificar si la columna corresponde a "AGNO" para asignar el cualificador.
+                        if ((columnName.compareTo("AGNO")) == 0) {
+                            cualificador = String.valueOf(i);
+                        }
+                        
+                        // Identificar columnas que representan identificadores de establecimiento.
                         if (identificadorEstablecimiento.contains(columnName)) {
-                        	matchEstablecimiento.add(new VariablePosition(columnName, i));
+                            matchEstablecimiento.add(new VariablePosition(columnName, i));
                         }
                         
+                        // Identificar columnas que representan identificadores de región.
                         if (identificadorRegion.contains(columnName)) {
-                        	matchRegion.add(new VariablePosition(columnName, i));
+                            matchRegion.add(new VariablePosition(columnName, i));
                         }
+                        
+                        // Identificar columnas que representan identificadores de comuna.
                         if (identificadorComuna.contains(columnName)) {
-                        	matchComuna.add(new VariablePosition(columnName, i));
+                            matchComuna.add(new VariablePosition(columnName, i));
                         }
                         
+                        // Identificar columnas que representan identificadores de docente.
                         if (identificadorDocente.contains(columnName)) {
-                        	matchDocente.add(new VariablePosition(columnName, i));
+                            matchDocente.add(new VariablePosition(columnName, i));
                         }
-                        
                     }
                 }
                 
+                // Imprimir el cualificador y las coincidencias identificadas para cada objeto.
                 System.out.println("cualificador: " + cualificador);
                 System.out.println("matchEstablecimiento: " + matchEstablecimiento);
                 System.out.println("matchRegion: " + matchRegion);
                 System.out.println("matchComuna: " + matchComuna);
                 System.out.println("matchDocente: " + matchDocente);
                 
+                // Booleanos para verificar si se encontraron identificadores suficientes para cada objeto.
                 Boolean hayEstablecimiento = matchEstablecimiento.size() == 3;
                 Boolean hayRegion = matchRegion.size() == 1;
                 Boolean hayComuna = matchComuna.size() == 1;
                 Boolean hayDocente = matchDocente.size() == 1;
-                                
+                
+                // Listas para almacenar posiciones de las variables ordenadas.
                 List<Integer> posicionesEstablecimiento = null;
                 List<Integer> posicionesRegion = null;
                 List<Integer> posicionesComuna = null;
                 List<Integer> posicionesDocente = null;
                 
+                // Obtener las posiciones ordenadas si hay identificadores suficientes para cada objeto.
                 if (hayEstablecimiento) {
-                	
-                	List<String> variablesOrdenadas = Arrays.asList("NOM_RBD", "NOM_REG_RBD_A", "NOM_COM_RBD");
-                	posicionesEstablecimiento = getPositionsInOrder(matchEstablecimiento, variablesOrdenadas);
+                    List<String> variablesOrdenadas = Arrays.asList("NOM_RBD", "NOM_REG_RBD_A", "NOM_COM_RBD");
+                    posicionesEstablecimiento = getPositionsInOrder(matchEstablecimiento, variablesOrdenadas);
                 }
                 
                 if (hayRegion) {
-                	List<String> variablesOrdenadas = Arrays.asList("NOM_REG_RBD_A");
-                	posicionesRegion = getPositionsInOrder(matchRegion, variablesOrdenadas);	
+                    List<String> variablesOrdenadas = Arrays.asList("NOM_REG_RBD_A");
+                    posicionesRegion = getPositionsInOrder(matchRegion, variablesOrdenadas);
                 }
                 
                 if (hayComuna) {
-                	List<String> variablesOrdenadas = Arrays.asList("NOM_COM_RBD");
-                	posicionesComuna = getPositionsInOrder(matchComuna, variablesOrdenadas);	
+                    List<String> variablesOrdenadas = Arrays.asList("NOM_COM_RBD");
+                    posicionesComuna = getPositionsInOrder(matchComuna, variablesOrdenadas);
                 }
-				
-				if (hayDocente) {
-					
-					List<String> variablesOrdenadas = Arrays.asList("MRUN");
-					posicionesDocente = getPositionsInOrder(matchDocente, variablesOrdenadas);	
-				}
-				
-				LinkedHashMap<String, String> establecimientos = new LinkedHashMap<>();
-				LinkedHashMap<String, String> regiones = new LinkedHashMap<>();
-				LinkedHashMap<String, String> comunas = new LinkedHashMap<>();
-				LinkedHashMap<String, String> docentes = new LinkedHashMap<>();
+
+                if (hayDocente) {
+                    List<String> variablesOrdenadas = Arrays.asList("MRUN");
+                    posicionesDocente = getPositionsInOrder(matchDocente, variablesOrdenadas);
+                }
                 
+                // Mapas para almacenar información relacionada con cada tipo de objeto.
+                LinkedHashMap<String, String> establecimientos = new LinkedHashMap<>();
+                LinkedHashMap<String, String> regiones = new LinkedHashMap<>();
+                LinkedHashMap<String, String> comunas = new LinkedHashMap<>();
+                LinkedHashMap<String, String> docentes = new LinkedHashMap<>();
+
+
 				
                 for (int i = 0; i < max_read; i++) {
                 	
                 	
                 	
                 	
-                	String[] nextInLine = reader.readNext();
-                	
-                	if (nextInLine == null) {
-                		
-                		System.out.println("No hay mas lineas para leer");
-                        System.exit(1);
-                		
-                	}
-                    //Arrays.stream(nextInLine).forEach(element -> System.out.print(element + " "));
+                	// Leer la siguiente línea del archivo CSV.
+                    String[] nextInLine = reader.readNext();
 
-                	String nextInLineString = "";
-                	
-                	
-                	for (int j = 0; j < nextInLine.length; j++) {
-                		nextInLineString = nextInLineString + nextInLine[j];
-                	    if (j < nextInLine.length - 1) {
-                	    	nextInLineString = nextInLineString + ",";
-                	    }
-                	}
-                	nextInLineString = nextInLineString.trim().replaceAll("[^\\p{Print}]", "").replaceAll("\"", "");
-                    // Split the string into individual column names
-                	
-                    String[] nextInLineValues = nextInLineString.split(";");
-                                      
-                    
-                    if (posicionCodEnse != -1) {
-                    	
-                    	if ( !educationalLevels.containsKey(nextInLineValues[posicionCodEnse]) ) {
-                    		
-                    		System.out.println("Linea saltada");
-                    		
-                    		continue;
-                    		
-                    	}
-                    	
+                    // Si no hay más líneas para leer, mostrar mensaje y finalizar el programa.
+                    if (nextInLine == null) {
+                        System.out.println("No hay más líneas para leer");
+                        System.exit(1);
                     }
-                    
+
+                    // Inicializar una cadena para concatenar todos los valores de la línea leída.
+                    String nextInLineString = "";
+
+                    // Recorrer los valores de la línea y construir una cadena con todos los valores separados por comas.
+                    for (int j = 0; j < nextInLine.length; j++) {
+                        nextInLineString = nextInLineString + nextInLine[j];
+                        if (j < nextInLine.length - 1) {
+                            nextInLineString = nextInLineString + ",";
+                        }
+                    }
+
+                    // Limpiar la cadena eliminando caracteres no imprimibles y comillas.
+                    nextInLineString = nextInLineString.trim().replaceAll("[^\\p{Print}]", "").replaceAll("\"", "");
+
+                    // Dividir la cadena en valores individuales para cada columna.
+                    String[] nextInLineValues = nextInLineString.split(";");
+
+                    // Verificar si la posición de "COD_ENSE" es válida.
+                    if (posicionCodEnse != -1) {
+                        
+                        // Si el valor en la posición de "COD_ENSE" no está en los niveles educativos, saltar la línea.
+                        if (!educationalLevels.containsKey(nextInLineValues[posicionCodEnse])) {
+                            System.out.println("Línea saltada");
+                            continue;
+                        }
+                    }
+
+                    // Inicializar variables para almacenar identificadores de diferentes objetos.
                     String establecimientoId = "";
                     String regionId = "";
                     String comunaId = "";
                     String docenteId = "";
-                    
-					long startTime = System.currentTimeMillis();
-                	
-                	System.out.println("Lineas leidas: " + i);
+
+                    // Registrar el tiempo de inicio para medir la duración del procesamiento.
+                    long startTime = System.currentTimeMillis();
+
+                    // Mostrar en la consola el número de la línea que se está procesando.
+                    System.out.println("Líneas leídas: " + i);
+
                     
                     if (hayEstablecimiento){
                     	
-                    	String establecimientoLabel = "";
-                    	String establecimientoNombre = "";
-                    	for (int j = 0; j < posicionesEstablecimiento.size(); j++) { 		
-                    		establecimientoLabel = establecimientoLabel.replaceAll("[^\\p{Print}]", "").replaceAll("\"", "") + nextInLineValues[posicionesEstablecimiento.get(j)].trim().replaceAll("[^\\p{Print}]", "").replaceAll("\"", "");
-                    		
-                    		if (j == 0) {
-                    			establecimientoNombre =  nextInLineValues[posicionesEstablecimiento.get(j)];
-                    		}
-                    		
-                    		if (j != posicionesEstablecimiento.size() - 1) {
-                    			establecimientoLabel = establecimientoLabel + " ";
-                    		}
+                    	// Inicializar las variables para la etiqueta y el nombre del establecimiento.
+                        String establecimientoLabel = "";
+                        String establecimientoNombre = "";
 
-                    	}
-                    	     
-                    	boolean establecimientoTipo = false;
+                        // Recorrer las posiciones de establecimiento para construir la etiqueta completa.
+                        for (int j = 0; j < posicionesEstablecimiento.size(); j++) {
+                            // Limpiar cada valor, eliminando caracteres no imprimibles y comillas, y concatenarlo.
+                            establecimientoLabel = establecimientoLabel.replaceAll("[^\\p{Print}]", "").replaceAll("\"", "") 
+                                                + nextInLineValues[posicionesEstablecimiento.get(j)].trim().replaceAll("[^\\p{Print}]", "").replaceAll("\"", "");
+                            
+                            // Guardar el nombre del establecimiento a partir del primer valor encontrado.
+                            if (j == 0) {
+                                establecimientoNombre = nextInLineValues[posicionesEstablecimiento.get(j)];
+                            }
+
+                            // Agregar un espacio entre valores, excepto al final.
+                            if (j != posicionesEstablecimiento.size() - 1) {
+                                establecimientoLabel = establecimientoLabel + " ";
+                            }
+                        }
+
+                        // Inicializar una bandera para determinar si se ha identificado el tipo de establecimiento.
+                        boolean establecimientoTipo = false;
+
+                        // Verificar si el establecimiento ya existe en el diccionario.
+                        if (establecimientos.containsKey(establecimientoLabel)) {
+                            
+                            // Si existe, obtener el ID del establecimiento.
+                            establecimientoId = establecimientos.get(establecimientoLabel);
+
+                        } else {
+                            // Verificar si el establecimiento existe en Wikibase.
+                            if (manager.entityExistsByLabel(establecimientoLabel, "item", "es")) {
+                                // Obtener el ID del establecimiento de Wikibase.
+                                establecimientoId = manager.getEntityByLabel(establecimientoLabel, "item", "es");
+                                // Guardar el ID en el diccionario para futuras referencias.
+                                establecimientos.put(establecimientoLabel, establecimientoId);
+                                
+                                // Verificar si el establecimiento coincide con ciertos tipos y agregar la declaración correspondiente.
+                                if (containsIgnoreCase(colegioSet, establecimientoLabel)) {
+                                    // Verificar si ya existe la declaración de tipo "colegio".
+                                    if (!manager.statementExists(establecimientoId, "P15", "Q17305")) {
+                                        // Agregar la declaración para definir el tipo como "colegio".
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17305", "wikibase-item");
+                                    }
+                                    // Marcar que se ha identificado el tipo de establecimiento.
+                                    establecimientoTipo = true;
+                                }
+
+                                // Repetir el proceso para otros tipos de establecimiento.
+                                if (containsIgnoreCase(escuelaSet, establecimientoLabel)) {
+                                    if (!manager.statementExists(establecimientoId, "P15", "Q17306")) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17306", "wikibase-item");
+                                    }
+                                    establecimientoTipo = true;
+                                }
+
+                                if (containsIgnoreCase(liceoSet, establecimientoLabel)) {
+                                    if (!manager.statementExists(establecimientoId, "P15", "Q17307")) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17307", "wikibase-item");
+                                    }
+                                    establecimientoTipo = true;
+                                }
+
+                                if (containsIgnoreCase(universidadSet, establecimientoLabel)) {
+                                    if (!manager.statementExists(establecimientoId, "P15", "Q17308")) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17308", "wikibase-item");
+                                    }
+                                    establecimientoTipo = true;
+                                }
+
+                                if (containsIgnoreCase(institutoSet, establecimientoLabel)) {
+                                    if (!manager.statementExists(establecimientoId, "P15", "Q17309")) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17309", "wikibase-item");
+                                    }
+                                    establecimientoTipo = true;
+                                }
+
+                                if (containsIgnoreCase(centroSet, establecimientoLabel)) {
+                                    if (!manager.statementExists(establecimientoId, "P15", "Q17310")) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17310", "wikibase-item");
+                                    }
+                                    establecimientoTipo = true;
+                                }
+
+                                if (containsIgnoreCase(complejoSet, establecimientoLabel)) {
+                                    if (!manager.statementExists(establecimientoId, "P15", "Q17311")) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17311", "wikibase-item");
+                                    }
+                                    establecimientoTipo = true;
+                                }
+
+                                // Si no se ha identificado un tipo específico, asignar un tipo genérico.
+                                if (!establecimientoTipo) {
+                                    if (!manager.statementExists(establecimientoId, "P15", "Q3")) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q3", "wikibase-item");
+                                    }
+                                }
+
+                            } else {
+                                // Si el establecimiento no existe y la etiqueta no está vacía, crear un nuevo ítem en Wikibase.
+                                if (!establecimientoLabel.equals("")) {
+                                    // Crear el nuevo ítem usando el nombre del establecimiento.
+                                    establecimientoId = manager.createItem(establecimientoNombre, "");
+                                    
+                                    // Agregar la etiqueta como alias al ítem creado.
+                                    manager.addAlias(establecimientoId, establecimientoLabel, "es");
+                                    // Guardar el ID en el diccionario para futuras referencias.
+                                    establecimientos.put(establecimientoLabel, establecimientoId);
+                                    
+                                    // Verificar y agregar el tipo de establecimiento similar a los pasos anteriores.
+                                    if (containsIgnoreCase(colegioSet, establecimientoLabel)) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17305", "wikibase-item");
+                                        establecimientoTipo = true;
+                                    }
+
+                                    if (containsIgnoreCase(escuelaSet, establecimientoLabel)) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17306", "wikibase-item");
+                                        establecimientoTipo = true;
+                                    }
+
+                                    if (containsIgnoreCase(liceoSet, establecimientoLabel)) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17307", "wikibase-item");
+                                        establecimientoTipo = true;
+                                    }
+
+                                    if (containsIgnoreCase(universidadSet, establecimientoLabel)) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17308", "wikibase-item");
+                                        establecimientoTipo = true;
+                                    }
+
+                                    if (containsIgnoreCase(institutoSet, establecimientoLabel)) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17309", "wikibase-item");
+                                        establecimientoTipo = true;
+                                    }
+
+                                    if (containsIgnoreCase(centroSet, establecimientoLabel)) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17310", "wikibase-item");
+                                        establecimientoTipo = true;
+                                    }
+
+                                    if (containsIgnoreCase(complejoSet, establecimientoLabel)) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q17311", "wikibase-item");
+                                        establecimientoTipo = true;
+                                    }
+
+                                    // Si no se identificó ningún tipo específico, asignar un tipo genérico.
+                                    if (!establecimientoTipo) {
+                                        manager.addStatementToItem(establecimientoId, "P15", "Q3", "wikibase-item");
+                                    }
+                                }
+                            }
+                        }
+
                     	
-                    	if (establecimientos.containsKey(establecimientoLabel)) {
-                    		
-                    		establecimientoId = establecimientos.get(establecimientoLabel);
-                    		
-                    	} else {
-                    		if (manager.entityExistsByLabel(establecimientoLabel, "item", "es")) {
-                    			establecimientoId = manager.getEntityByLabel(establecimientoLabel, "item", "es");
-                    			establecimientos.put(establecimientoLabel, establecimientoId);
-                    			
-                    			// System.out.println(establecimientoLabel);
-                    			
-                    			if (containsIgnoreCase(colegioSet, establecimientoLabel)) {
-                    				
-                    				if (!manager.statementExists(establecimientoId, "P15", "Q17305")) {
-                    					
-                    					manager.addStatementToItem(establecimientoId, "P15", "Q17305", "wikibase-item");
-                    				
-                    				}
-                    				
-                    	            establecimientoTipo = true;
-                    	        }
+                    	// Inicializar variables para almacenar los valores de latitud y longitud.
+                        String Latitud = "";
+                        String Longitud = "";
 
-                    	        if (containsIgnoreCase(escuelaSet, establecimientoLabel)) {
-                    	        	
-                    	        	if (!manager.statementExists(establecimientoId, "P15", "Q17306")) {
-                    					
-                    					manager.addStatementToItem(establecimientoId, "P15", "Q17306", "wikibase-item");
-                    				
-                    				}
-                    	        	
-                    	            establecimientoTipo = true;
-                    	        }
-
-                    	        if (containsIgnoreCase(liceoSet, establecimientoLabel)) {
-                    	        	if (!manager.statementExists(establecimientoId, "P15", "Q17307")) {
-                    					
-                    					manager.addStatementToItem(establecimientoId, "P15", "Q17307", "wikibase-item");
-                    				
-                    				}                    	            
-                    	        	establecimientoTipo = true;
-                    	        }
-
-                    	        if (containsIgnoreCase(universidadSet, establecimientoLabel)) {
-                    	        	if (!manager.statementExists(establecimientoId, "P15", "Q17308")) {
-                    					
-                    					manager.addStatementToItem(establecimientoId, "P15", "Q17308", "wikibase-item");
-                    				
-                    				} 
-                    	            establecimientoTipo = true;
-                    	        }
-
-                    	        if (containsIgnoreCase(institutoSet, establecimientoLabel)) {
-                    	        	if (!manager.statementExists(establecimientoId, "P15", "Q17309")) {
-                    					
-                    					manager.addStatementToItem(establecimientoId, "P15", "Q17309", "wikibase-item");
-                    				
-                    				} 
-                    	            establecimientoTipo = true;
-                    	        }
-
-                    	        if (containsIgnoreCase(centroSet, establecimientoLabel)) {
-                    	        	if (!manager.statementExists(establecimientoId, "P15", "Q17310")) {
-                    					
-                    					manager.addStatementToItem(establecimientoId, "P15", "Q17310", "wikibase-item");
-                    				
-                    				}                    	            
-                    	        	establecimientoTipo = true;
-                    	        }
-
-                    	        if (containsIgnoreCase(complejoSet, establecimientoLabel)) {
-                    	        	if (!manager.statementExists(establecimientoId, "P15", "Q17311")) {
-                    					
-                    					manager.addStatementToItem(establecimientoId, "P15", "Q17311", "wikibase-item");
-                    				
-                    				}   
-                    	            establecimientoTipo = true;
-                    	        }
-                    			
-                    			if (!establecimientoTipo) {
-                    				
-                    				if (!manager.statementExists(establecimientoId, "P15", "Q3")) {
-                    					
-                    					manager.addStatementToItem(establecimientoId, "P15", "Q3", "wikibase-item");
-                    			
-                    				}  
-                    			} 
-                    			
-                    		} else {
-                    			if (!establecimientoLabel.equals("")) {
-                        			establecimientoId = manager.createItem(establecimientoNombre, "");
-                        			
-                        			manager.addAlias(establecimientoId, establecimientoLabel, "es");
-                        			establecimientos.put(establecimientoLabel, establecimientoId);
-                        			
-                        			// System.out.println(establecimientoLabel);
-                        			
-                        			if (containsIgnoreCase(colegioSet, establecimientoLabel)) {
-                        				manager.addStatementToItem(establecimientoId, "P15", "Q17305", "wikibase-item");
-                        	            establecimientoTipo = true;
-                        	        }
-
-                        	        if (containsIgnoreCase(escuelaSet, establecimientoLabel)) {
-                        	        	manager.addStatementToItem(establecimientoId, "P15", "Q17306", "wikibase-item");
-                        	            establecimientoTipo = true;
-                        	        }
-
-                        	        if (containsIgnoreCase(liceoSet, establecimientoLabel)) {
-                        	        	manager.addStatementToItem(establecimientoId, "P15", "Q17307", "wikibase-item");
-                        	            establecimientoTipo = true;
-                        	        }
-
-                        	        if (containsIgnoreCase(universidadSet, establecimientoLabel)) {
-                        	        	manager.addStatementToItem(establecimientoId, "P15", "Q17308", "wikibase-item");
-                        	            establecimientoTipo = true;
-                        	        }
-
-                        	        if (containsIgnoreCase(institutoSet, establecimientoLabel)) {
-                        	        	manager.addStatementToItem(establecimientoId, "P15", "Q17309", "wikibase-item");
-                        	            establecimientoTipo = true;
-                        	        }
-
-                        	        if (containsIgnoreCase(centroSet, establecimientoLabel)) {
-                        	        	manager.addStatementToItem(establecimientoId, "P15", "Q17310", "wikibase-item");
-                        	            establecimientoTipo = true;
-                        	        }
-
-                        	        if (containsIgnoreCase(complejoSet, establecimientoLabel)) {
-                        	        	manager.addStatementToItem(establecimientoId, "P15", "Q17311", "wikibase-item");
-                        	            establecimientoTipo = true;
-                        	        }
-                        			
-                        			if (!establecimientoTipo) {
-                        				
-                        				manager.addStatementToItem(establecimientoId, "P15", "Q3", "wikibase-item");
-                        				
-                        			} 
-     
-                    			}
-                    		}
-
-                    		
-                    	}
-                    	
-                    	String Latitud = "";
-                    	String Longitud = "";
-                    	                    	                    	                    	
+                        // Recorrer las propiedades del establecimiento que se han identificado en el archivo CSV.                    	                    	                    	
                     	for (VariablePosition vp : matchingPropEstablecimiento) {
                     		
-                    		String propiedadCodigo = vp.getVariable();
-                    		int propiedadPosicion = vp.getPosition();
-                    		// System.out.println(propiedadCodigo);
-                    		String propiedad = diccionarioPropiedades.get(propiedadCodigo);
+                    		// Obtener el código y la posición de la propiedad en el CSV.
+                            String propiedadCodigo = vp.getVariable();
+                            int propiedadPosicion = vp.getPosition();
+                            // System.out.println(propiedadCodigo);
+                            
+                            // Obtener el nombre de la propiedad a partir del diccionario.
+                            String propiedad = diccionarioPropiedades.get(propiedadCodigo);
+                            
+                            String propiedadId = "";
+                            
+                            // Verificar si la propiedad ya tiene un ID en el diccionario.
+                            if (diccionarioPropiedadesId.containsKey(propiedad)) {
+                                propiedadId = diccionarioPropiedadesId.get(propiedad);
+                            } else {
+                                // Si no está en el diccionario, buscar el ID de la propiedad en Wikibase y agregarlo al diccionario.
+                                propiedadId = manager.getEntityByLabel(propiedad, "property", "es");
+                                diccionarioPropiedadesId.put(docenteId, propiedadId);
+                            }
                     		
-							String propiedadId = "";
-							
-                    		if (diccionarioPropiedadesId.containsKey(propiedad)) {
-                    			
-                    			propiedadId = diccionarioPropiedadesId.get(propiedad);
-
-                    			
-                    		} else {
-
-                    			// System.out.println(propiedad);
-                    			
-                    			propiedadId = manager.getEntityByLabel(propiedad, "property", "es");
-                    			
-                    			diccionarioPropiedadesId.put(docenteId, propiedadId);
-                    			
-                    		};
-                    		
+                            // Verificar si la propiedad tiene cualificadores en el diccionario.
                     		if (diccionarioPropiedadesConCualificador.containsKey(propiedad)) {
                 				
-                				String propiedadType = diccionarioPropiedadesConCualificador.get(propiedad);
+                				// Obtener el tipo de la propiedad (por ejemplo, cantidad, tiempo, etc.).
+                                String propiedadType = diccionarioPropiedadesConCualificador.get(propiedad);
+                                String statementId = "";
+                                
+                                // Manejo especial para la propiedad "COD_ENSE".
+                                if (propiedadCodigo.equals("COD_ENSE")) {
+                                    if (educationalLevels.containsKey(educationalLevels.get(nextInLineValues[propiedadPosicion]))) {
+                                        // Verificar si la declaración ya existe y obtener su ID.
+                                        if (manager.statementExists(establecimientoId, propiedadId, educationalLevels.get(nextInLineValues[propiedadPosicion]))) {
+                                            statementId = manager.getStatementId(establecimientoId, propiedadId, educationalLevels.get(nextInLineValues[propiedadPosicion]), propiedadType);
+                                        } else {
+                                            // Agregar una nueva declaración si no existe.
+                                            statementId = manager.addStatementToItem(establecimientoId, propiedadId, educationalLevels.get(nextInLineValues[propiedadPosicion]), propiedadType);
+                                        }
+                                    } else {
+                                        // Saltar si el valor no se encuentra en los niveles educativos.
+                                        continue;
+                                    }
+                                } else if (propiedadType.equals("quantity")) {
                 					
-                				String statementId = "";
-                				
-                				
-                				if (propiedadCodigo.equals("COD_ENSE")) {
-                					
-                					if (educationalLevels.containsKey(educationalLevels.get(nextInLineValues[propiedadPosicion]))) {
-                						
-                						if (manager.statementExists(establecimientoId, propiedadId, educationalLevels.get(nextInLineValues[propiedadPosicion]))) {
-                        					statementId = manager.getStatementId(establecimientoId, propiedadId, educationalLevels.get(nextInLineValues[propiedadPosicion]), propiedadType);
-                        				} else {
-                        					statementId = manager.addStatementToItem(establecimientoId, propiedadId, educationalLevels.get(nextInLineValues[propiedadPosicion]), propiedadType);
-                        				}
-                						
-                					} else {
-                						
-                						continue;
-                						
-                					}
-                					
-                					
-                						
-                				} else if (propiedadType.equals("quantity")) {
-                					
-                					//System.out.println(establecimientoId);
-                					//System.out.println(propiedadPosicion);
-                					
-                					if (manager.statementExists(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion].replace(",", "."))) {
-                						
-                						statementId = manager.getStatementId(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion].replace(",", "."), propiedadType);
-                						
-                					} else {
-                						
-                						statementId = manager.addStatementToItem(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion].replace(",", "."), propiedadType);
-                						
-                					}
+                					// Manejo para propiedades de tipo "cantidad".
+                                    if (manager.statementExists(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion].replace(",", "."))) {
+                                        statementId = manager.getStatementId(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion].replace(",", "."), propiedadType);
+                                    } else {
+                                        statementId = manager.addStatementToItem(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion].replace(",", "."), propiedadType);
+                                    }
                 					
                 						
                 				} else if (manager.statementExists(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion])) {
-                					
-                					statementId = manager.getStatementId(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion].replace(",", "."), propiedadType);
-                					
-                				} else {
-                					//System.out.println(establecimientoId);
-                					//System.out.println(propiedadId);
-                					//System.out.println(nextInLineValues[propiedadPosicion]);
-                					//System.out.println(propiedadType);
-                					
-                					statementId = manager.addStatementToItem(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], propiedadType);
-                					
-                					
-                				}
+                                    statementId = manager.getStatementId(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion].replace(",", "."), propiedadType);
+                                } else {
+                                    statementId = manager.addStatementToItem(establecimientoId, propiedadId, nextInLineValues[propiedadPosicion], propiedadType);
+                                }
                 				
                 				//System.out.println("ID: " + statementId);
                 				//System.out.println("Propiedad tipo: " + propiedadType);
